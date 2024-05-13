@@ -67,6 +67,8 @@ tracing = { workspace = true }
 tracing-appender = { workspace = true }
 tracing-subscriber = { workspace = true }
 uuid = { version = "1.0", features = ["v4"] }
+deltalake = {  version = "0.17.3", features = ["datafusion", "datafusion-ext", "s3"] }
+deltalake-aws = "0.1.2"
 
 [dev-dependencies]
 

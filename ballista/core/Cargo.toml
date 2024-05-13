@@ -53,6 +53,8 @@ clap = { version = "3", features = ["derive", "cargo"] }
 datafusion = { workspace = true }
 datafusion-objectstore-hdfs = { version = "0.1.4", default-features = false, optional = true }
 datafusion-proto = { workspace = true }
+deltalake = {  version = "0.17.3", features = ["datafusion", "datafusion-ext"] }
+deltalake-aws = "0.1.2"
 futures = "0.3"
 hashbrown = "0.14"
 

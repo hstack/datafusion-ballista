@@ -40,6 +40,8 @@ datafusion-proto = "37.1.0"
 datafusion-cli = "37.0.0"
 object_store = "0.9.1"
 sqlparser = "0.45.0"
+deltalake = {  version = "0.17.3", features = ["datafusion", "datafusion-ext", "s3"] }
+deltalake-aws = "0.1.2"
 tonic = { version = "0.11.0" }
 tonic-build = { version = "0.11.0", default-features = false, features = [
     "transport",
@@ -110,7 +112,7 @@ datafusion-substrait = { git = 'https://github.com/hstack/arrow-datafusion.git',
 # datafusion-substrait = { path = "../arrow-datafusion/datafusion/substrait" }
 # datafusion = { git = 'https://github.com/hstack/arrow-datafusion.git', branch = 'main' }
 deltalake = { git = 'https://github.com/hstack/delta-rs.git', branch = 'delta-ballista-interaction' }
-ballista = { git = 'https://github.com/hstack/datafusion-ballista.git', branch = 'delta-ballista-interaction' }
+deltalake-aws = { git = 'https://github.com/hstack/delta-rs.git', branch = 'delta-ballista-interaction' }
 
 # datafusion = { git = "https://github.com/apache/arrow-datafusion.git" }
 # datafusion-common = { git = "https://github.com/apache/arrow-datafusion.git" }
