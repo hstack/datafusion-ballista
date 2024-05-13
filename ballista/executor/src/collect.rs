@@ -25,12 +25,9 @@ use std::{any::Any, pin::Pin};
 use datafusion::arrow::{datatypes::SchemaRef, record_batch::RecordBatch};
 use datafusion::error::DataFusionError;
 use datafusion::execution::context::TaskContext;
-use datafusion::physical_plan::expressions::PhysicalSortExpr;
-use datafusion::physical_plan::{
-    DisplayAs, DisplayFormatType, ExecutionPlan, Partitioning, SendableRecordBatchStream,
-    Statistics,
-};
+use datafusion::physical_plan::{DisplayAs, DisplayFormatType, ExecutionMode, ExecutionPlan, Partitioning, PlanProperties, SendableRecordBatchStream, Statistics};
 use datafusion::{error::Result, physical_plan::RecordBatchStream};
+use datafusion::physical_expr::EquivalenceProperties;
 use futures::stream::SelectAll;
 use futures::Stream;
 
@@ -39,11 +36,30 @@ use futures::Stream;
 #[derive(Debug, Clone)]
 pub struct CollectExec {
     plan: Arc<dyn ExecutionPlan>,
+    cache: PlanProperties,
 }
 
 impl CollectExec {
     pub fn new(plan: Arc<dyn ExecutionPlan>) -> Self {
-        Self { plan }
+        let schema_ref = plan.schema().clone();
+        Self {
+            plan,
+            cache: Self::compute_properties(schema_ref),
+        }
+    }
+
+    /// This function creates the cache object that stores the plan properties such as schema, equivalence properties, ordering, partitioning, etc.
+    fn compute_properties(
+        schema: SchemaRef,
+    ) -> PlanProperties {
+        // Equivalence Properties
+        let eq_properties = EquivalenceProperties::new(schema);
+
+        PlanProperties::new(
+            eq_properties,
+            Partitioning::UnknownPartitioning(1), // Output Partitioning
+            ExecutionMode::Bounded,                             // Execution Mode
+        )
     }
 }
 
@@ -70,13 +86,7 @@ impl ExecutionPlan for CollectExec {
         self.plan.schema()
     }
 
-    fn output_partitioning(&self) -> Partitioning {
-        Partitioning::UnknownPartitioning(1)
-    }
-
-    fn output_ordering(&self) -> Option<&[PhysicalSortExpr]> {
-        None
-    }
+    fn properties(&self) -> &PlanProperties { &self.cache }
 
     fn children(&self) -> Vec<Arc<dyn ExecutionPlan>> {
         vec![self.plan.clone()]
@@ -95,7 +105,7 @@ impl ExecutionPlan for CollectExec {
         context: Arc<TaskContext>,
     ) -> Result<SendableRecordBatchStream> {
         assert_eq!(0, partition);
-        let num_partitions = self.plan.output_partitioning().partition_count();
+        let num_partitions = self.plan.properties().output_partitioning().partition_count();
 
         let streams = (0..num_partitions)
             .map(|i| self.plan.execute(i, context.clone()))

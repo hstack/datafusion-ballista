@@ -30,24 +30,36 @@ exclude = [ "python" ]
 resolver = "2"
 
 [workspace.dependencies]
-arrow = { version = "50.0.0", features=["ipc_compression"] }
-arrow-flight = { version = "50.0.0", features = ["flight-sql-experimental"] }
-arrow-schema = { version = "50.0.0", default-features = false }
+arrow = { version = "51.0.0", features=["ipc_compression"] }
+arrow-flight = { version = "51.0.0", features = ["flight-sql-experimental"] }
+arrow-schema = { version = "51.0.0", default-features = false }
 configure_me = { version = "0.4.0" }
 configure_me_codegen = { version = "0.4.4" }
-datafusion = "35.0.0"
-datafusion-cli = "35.0.0"
-datafusion-proto = "35.0.0"
-object_store = "0.9.0"
-sqlparser = "0.41.0"
-tonic = { version = "0.10" }
-tonic-build = { version = "0.10", default-features = false, features = [
+datafusion = "37.1.0"
+datafusion-proto = "37.1.0"
+datafusion-cli = "37.0.0"
+object_store = "0.9.1"
+sqlparser = "0.45.0"
+tonic = { version = "0.11.0" }
+tonic-build = { version = "0.11.0", default-features = false, features = [
     "transport",
     "prost"
 ] }
 tracing = "0.1.36"
 tracing-appender = "0.2.2"
 tracing-subscriber = { version = "0.3.15", features = ["env-filter"] }
+
+[profile.idea]
+inherits = "dev"
+opt-level = 0
+debug = 2
+split-debuginfo = "packed"
+strip = "none"
+debug-assertions = true
+overflow-checks = false
+incremental = true
+codegen-units = 256
+lto = "off"
 
 # cargo build --profile release-lto
 [profile.release-lto]
@@ -68,3 +80,58 @@ opt-level = 3
 overflow-checks = false
 panic = 'unwind'
 rpath = false
+
+[patch.crates-io]
+datafusion = { git = 'https://github.com/hstack/arrow-datafusion.git', branch = 'main' }
+datafusion-common = { git = 'https://github.com/hstack/arrow-datafusion.git', branch = 'main' }
+datafusion-common-runtime = { git = 'https://github.com/hstack/arrow-datafusion.git', branch = 'main' }
+datafusion-execution = { git = 'https://github.com/hstack/arrow-datafusion.git', branch = 'main' }
+datafusion-expr = { git = 'https://github.com/hstack/arrow-datafusion.git', branch = 'main' }
+datafusion-functions = { git = 'https://github.com/hstack/arrow-datafusion.git', branch = 'main' }
+datafusion-functions-array = { git = 'https://github.com/hstack/arrow-datafusion.git', branch = 'main' }
+datafusion-optimizer = { git = 'https://github.com/hstack/arrow-datafusion.git', branch = 'main' }
+datafusion-physical-expr = { git = 'https://github.com/hstack/arrow-datafusion.git', branch = 'main' }
+datafusion-physical-plan = { git = 'https://github.com/hstack/arrow-datafusion.git', branch = 'main' }
+datafusion-proto = { git = 'https://github.com/hstack/arrow-datafusion.git', branch = 'main' }
+datafusion-sql = { git = 'https://github.com/hstack/arrow-datafusion.git', branch = 'main' }
+datafusion-substrait = { git = 'https://github.com/hstack/arrow-datafusion.git', branch = 'main' }
+# datafusion = { path = "../arrow-datafusion/datafusion/core" }
+# datafusion-common = { path = "../arrow-datafusion/datafusion/common" }
+# datafusion-common-runtime = { path = "../arrow-datafusion/datafusion/common-runtime" }
+# datafusion-execution = { path = "../arrow-datafusion/datafusion/execution" }
+# datafusion-expr = { path = "../arrow-datafusion/datafusion/expr" }
+# datafusion-functions = { path = "../arrow-datafusion/datafusion/functions" }
+# datafusion-functions-array = { path = "../arrow-datafusion/datafusion/functions-array" }
+# datafusion-optimizer = { path = "../arrow-datafusion/datafusion/optimizer" }
+# datafusion-physical-expr = { path = "../arrow-datafusion/datafusion/physical-expr" }
+# datafusion-physical-plan = { path = "../arrow-datafusion/datafusion/physical-plan" }
+# datafusion-proto = { path = "../arrow-datafusion/datafusion/proto" }
+# datafusion-sql = { path = "../arrow-datafusion/datafusion/sql" }
+# datafusion-substrait = { path = "../arrow-datafusion/datafusion/substrait" }
+# datafusion = { git = 'https://github.com/hstack/arrow-datafusion.git', branch = 'main' }
+deltalake = { git = 'https://github.com/hstack/delta-rs.git', branch = 'delta-ballista-interaction' }
+ballista = { git = 'https://github.com/hstack/datafusion-ballista.git', branch = 'delta-ballista-interaction' }
+
+# datafusion = { git = "https://github.com/apache/arrow-datafusion.git" }
+# datafusion-common = { git = "https://github.com/apache/arrow-datafusion.git" }
+# datafusion-substrait = { git = "https://github.com/apache/arrow-datafusion.git" }
+
+#arrow = {path = "../../arrow-ecosystem-sources/arrow-rs/arrow" }
+#arrow-arith = {path = "../../arrow-ecosystem-sources/arrow-rs/arrow-arith" }
+#arrow-array = {path = "../../arrow-ecosystem-sources/arrow-rs/arrow-array" }
+#arrow-avro = {path = "../../arrow-ecosystem-sources/arrow-rs/arrow-avro" }
+#arrow-buffer = {path = "../../arrow-ecosystem-sources/arrow-rs/arrow-buffer" }
+#arrow-cast = {path = "../../arrow-ecosystem-sources/arrow-rs/arrow-cast" }
+#arrow-csv = {path = "../../arrow-ecosystem-sources/arrow-rs/arrow-csv" }
+#arrow-data = {path = "../../arrow-ecosystem-sources/arrow-rs/arrow-data" }
+#arrow-flight = {path = "../../arrow-ecosystem-sources/arrow-rs/arrow-flight" }
+#arrow-ipc = {path = "../../arrow-ecosystem-sources/arrow-rs/arrow-ipc" }
+#arrow-json = {path = "../../arrow-ecosystem-sources/arrow-rs/arrow-json" }
+#arrow-ord = {path = "../../arrow-ecosystem-sources/arrow-rs/arrow-ord" }
+#arrow-row = {path = "../../arrow-ecosystem-sources/arrow-rs/arrow-row" }
+#arrow-schema = {path = "../../arrow-ecosystem-sources/arrow-rs/arrow-schema" }
+#arrow-select = {path = "../../arrow-ecosystem-sources/arrow-rs/arrow-select" }
+#arrow-string = {path = "../../arrow-ecosystem-sources/arrow-rs/arrow-string" }
+#object_store = {path = "../../arrow-ecosystem-sources/arrow-rs/object_store" }
+#parquet = {path = "../../arrow-ecosystem-sources/arrow-rs/parquet" }
+#parquet_derive = {path = "../../arrow-ecosystem-sources/arrow-rs/parquet_derive" }

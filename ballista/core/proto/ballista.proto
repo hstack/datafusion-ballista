@@ -268,12 +268,13 @@ message OperatorMetric {
     uint64 elapse_time = 2;
     uint64 spill_count = 3;
     uint64 spilled_bytes = 4;
-    uint64 current_memory_usage = 5;
-    NamedCount count = 6;
-    NamedGauge gauge = 7;
-    NamedTime time = 8;
-    int64 start_timestamp = 9;
-    int64 end_timestamp = 10;
+    uint64 spilled_rows = 5;
+    uint64 current_memory_usage = 6;
+    NamedCount count = 7;
+    NamedGauge gauge = 8;
+    NamedTime time = 9;
+    int64 start_timestamp = 10;
+    int64 end_timestamp = 11;
   }
 }
 

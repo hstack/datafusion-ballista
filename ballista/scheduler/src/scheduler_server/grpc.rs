@@ -317,7 +317,7 @@ impl<T: 'static + AsLogicalPlan, U: 'static + AsExecutionPlan> SchedulerGrpc
             })?;
 
         let schema = file_format
-            .infer_schema(&state, &obj_store, &file_metas)
+            .infer_schema(&state, &obj_store, &file_metas, None)
             .await
             .map_err(|e| {
                 let msg = format!("Error inferring schema: {e}");

@@ -29,6 +29,8 @@ use crate::serde::scheduler::{
     PartitionLocation, PartitionStats,
 };
 use datafusion::physical_plan::Partitioning;
+use datafusion_proto::physical_plan::DefaultPhysicalExtensionCodec;
+use datafusion_proto::physical_plan::to_proto::serialize_physical_expr;
 use protobuf::{action::ActionType, operator_metric, NamedCount, NamedGauge, NamedTime};
 
 impl TryInto<protobuf::Action> for Action {
@@ -101,11 +103,14 @@ pub fn hash_partitioning_to_proto(
 ) -> Result<Option<datafusion_protobuf::PhysicalHashRepartition>, BallistaError> {
     match output_partitioning {
         Some(Partitioning::Hash(exprs, partition_count)) => {
+            let physical_extension_codec = DefaultPhysicalExtensionCodec{};
+            let physical_expr_nodes = exprs
+                .iter()
+                .map(|expr| serialize_physical_expr(expr.clone(), &physical_extension_codec))
+                .collect::<Result<Vec<_>, DataFusionError>>();
+
             Ok(Some(datafusion_protobuf::PhysicalHashRepartition {
-                hash_expr: exprs
-                    .iter()
-                    .map(|expr| expr.clone().try_into())
-                    .collect::<Result<Vec<_>, DataFusionError>>()?,
+                hash_expr: physical_expr_nodes?,
                 partition_count: *partition_count as u64,
             }))
         }
@@ -172,6 +177,9 @@ impl TryInto<protobuf::OperatorMetric> for &MetricValue {
                         .unwrap_or(0),
                 )),
             }),
+            MetricValue::SpilledRows(rows) => Ok(protobuf::OperatorMetric {
+                metric: Some(operator_metric::Metric::SpilledRows(rows.value() as u64)),
+            })
         }
     }
 }

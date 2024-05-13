@@ -30,12 +30,9 @@ use datafusion::arrow::record_batch::RecordBatch;
 use datafusion::error::{DataFusionError, Result};
 use datafusion::execution::context::TaskContext;
 use datafusion::logical_expr::LogicalPlan;
-use datafusion::physical_plan::expressions::PhysicalSortExpr;
+// use datafusion::physical_plan::expressions::PhysicalSortExpr;
 use datafusion::physical_plan::stream::RecordBatchStreamAdapter;
-use datafusion::physical_plan::{
-    DisplayAs, DisplayFormatType, ExecutionPlan, Partitioning, SendableRecordBatchStream,
-    Statistics,
-};
+use datafusion::physical_plan::{DisplayAs, DisplayFormatType, ExecutionMode, ExecutionPlan, Partitioning, PlanProperties, SendableRecordBatchStream, Statistics};
 use datafusion_proto::logical_plan::{
     AsLogicalPlan, DefaultLogicalExtensionCodec, LogicalExtensionCodec,
 };
@@ -46,6 +43,7 @@ use std::fmt::Debug;
 use std::marker::PhantomData;
 use std::sync::Arc;
 use std::time::Duration;
+use datafusion::physical_expr::EquivalenceProperties;
 
 /// This operator sends a logical plan to a Ballista scheduler for execution and
 /// polls the scheduler until the query is complete and then fetches the resulting
@@ -65,6 +63,7 @@ pub struct DistributedQueryExec<T: 'static + AsLogicalPlan> {
     plan_repr: PhantomData<T>,
     /// Session id
     session_id: String,
+    cache: PlanProperties,
 }
 
 impl<T: 'static + AsLogicalPlan> DistributedQueryExec<T> {
@@ -74,6 +73,7 @@ impl<T: 'static + AsLogicalPlan> DistributedQueryExec<T> {
         plan: LogicalPlan,
         session_id: String,
     ) -> Self {
+        let schema_ref = Arc::new(plan.schema().as_ref().clone().into());
         Self {
             scheduler_url,
             config,
@@ -81,6 +81,7 @@ impl<T: 'static + AsLogicalPlan> DistributedQueryExec<T> {
             extension_codec: Arc::new(DefaultLogicalExtensionCodec {}),
             plan_repr: PhantomData,
             session_id,
+            cache: Self::compute_properties(schema_ref),
         }
     }
 
@@ -91,6 +92,7 @@ impl<T: 'static + AsLogicalPlan> DistributedQueryExec<T> {
         extension_codec: Arc<dyn LogicalExtensionCodec>,
         session_id: String,
     ) -> Self {
+        let schema_ref = Arc::new(plan.schema().as_ref().clone().into());
         Self {
             scheduler_url,
             config,
@@ -98,6 +100,7 @@ impl<T: 'static + AsLogicalPlan> DistributedQueryExec<T> {
             extension_codec,
             plan_repr: PhantomData,
             session_id,
+            cache: Self::compute_properties(schema_ref),
         }
     }
 
@@ -109,6 +112,7 @@ impl<T: 'static + AsLogicalPlan> DistributedQueryExec<T> {
         plan_repr: PhantomData<T>,
         session_id: String,
     ) -> Self {
+        let schema_ref = Arc::new(plan.schema().as_ref().clone().into());
         Self {
             scheduler_url,
             config,
@@ -116,7 +120,22 @@ impl<T: 'static + AsLogicalPlan> DistributedQueryExec<T> {
             extension_codec,
             plan_repr,
             session_id,
+            cache: Self::compute_properties(schema_ref),
         }
+    }
+
+    /// This function creates the cache object that stores the plan properties such as schema, equivalence properties, ordering, partitioning, etc.
+    fn compute_properties(
+        schema: SchemaRef,
+    ) -> PlanProperties {
+        // Equivalence Properties
+        let eq_properties = EquivalenceProperties::new(schema);
+
+        PlanProperties::new(
+            eq_properties,
+            Partitioning::UnknownPartitioning(1), // Output Partitioning
+            ExecutionMode::Bounded,                             // Execution Mode
+        )
     }
 }
 
@@ -147,13 +166,7 @@ impl<T: 'static + AsLogicalPlan> ExecutionPlan for DistributedQueryExec<T> {
         self.plan.schema().as_ref().clone().into()
     }
 
-    fn output_partitioning(&self) -> Partitioning {
-        Partitioning::UnknownPartitioning(1)
-    }
-
-    fn output_ordering(&self) -> Option<&[PhysicalSortExpr]> {
-        None
-    }
+    fn properties(&self) -> &PlanProperties { &self.cache }
 
     fn children(&self) -> Vec<Arc<dyn ExecutionPlan>> {
         vec![]
@@ -170,6 +183,7 @@ impl<T: 'static + AsLogicalPlan> ExecutionPlan for DistributedQueryExec<T> {
             extension_codec: self.extension_codec.clone(),
             plan_repr: self.plan_repr,
             session_id: self.session_id.clone(),
+            cache: self.cache.clone(),
         }))
     }
 
