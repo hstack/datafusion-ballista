@@ -101,7 +101,15 @@ impl FlightSqlServiceImpl {
             Field::new("table_name", DataType::Utf8, false),
             Field::new("table_type", DataType::Utf8, false),
         ]));
-        let tables = ctx.tables()?; // resolved in #501
+        let catalog_names = ctx.catalog_names();
+        let first_catalog = catalog_names.get(0).unwrap();
+        let schemas = ctx.catalog(first_catalog).unwrap().schema_names();
+        let first_schema = schemas.get(0).unwrap();
+
+        let tables = ctx
+            .catalog(first_catalog).unwrap()
+            .schema(first_schema).unwrap()
+            .table_names(); // resolved in #501
         let names: Vec<_> = tables.iter().map(|it| Some(it.as_str())).collect();
         let types: Vec<_> = names.iter().map(|_| Some("TABLE")).collect();
         let cats: Vec<_> = names.iter().map(|_| None).collect();
@@ -298,6 +306,8 @@ impl FlightSqlServiceImpl {
             let fiep = FlightEndpoint {
                 ticket: Some(ticket),
                 location: vec![loc],
+                expiration_time: None,
+                app_metadata: Default::default(),
             };
             fieps.push(fiep);
         }
@@ -327,6 +337,8 @@ impl FlightSqlServiceImpl {
         let fiep = FlightEndpoint {
             ticket: Some(ticket),
             location: vec![loc],
+            expiration_time: None,
+            app_metadata: Default::default(),
         };
         let fieps = vec![fiep];
         Ok(fieps)
@@ -406,6 +418,7 @@ impl FlightSqlServiceImpl {
             total_records: num_rows,
             total_bytes: num_bytes,
             ordered: false,
+            app_metadata: Default::default(),
         };
         Response::new(info)
     }

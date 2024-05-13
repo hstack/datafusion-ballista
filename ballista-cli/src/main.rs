@@ -135,6 +135,7 @@ pub async fn main() -> Result<()> {
         format: args.format,
         quiet: args.quiet,
         maxrows: MaxRows::Unlimited,
+        color: true,
     };
 
     let files = args.file;

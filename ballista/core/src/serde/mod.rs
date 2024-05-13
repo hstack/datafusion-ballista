@@ -38,6 +38,8 @@ use std::fmt::Debug;
 use std::marker::PhantomData;
 use std::sync::Arc;
 use std::{convert::TryInto, io::Cursor};
+use datafusion_proto::physical_plan::DefaultPhysicalExtensionCodec;
+use datafusion_proto::physical_plan::to_proto::serialize_physical_expr;
 
 use crate::execution_plans::{
     ShuffleReaderExec, ShuffleWriterExec, UnresolvedShuffleExec,
@@ -142,10 +144,12 @@ impl PhysicalExtensionCodec for BallistaPhysicalExtensionCodec {
             PhysicalPlanType::ShuffleWriter(shuffle_writer) => {
                 let input = inputs[0].clone();
 
+                let ballista_codec = BallistaCodec::default();
                 let shuffle_output_partitioning = parse_protobuf_hash_partitioning(
                     shuffle_writer.output_partitioning.as_ref(),
                     registry,
                     input.schema().as_ref(),
+                    ballista_codec.physical_extension_codec()
                 )?;
 
                 Ok(Arc::new(ShuffleWriterExec::try_new(
@@ -181,12 +185,11 @@ impl PhysicalExtensionCodec for BallistaPhysicalExtensionCodec {
             }
             PhysicalPlanType::UnresolvedShuffle(unresolved_shuffle) => {
                 let schema = Arc::new(convert_required!(unresolved_shuffle.schema)?);
-                Ok(Arc::new(UnresolvedShuffleExec {
-                    stage_id: unresolved_shuffle.stage_id as usize,
+                Ok(Arc::new(UnresolvedShuffleExec::new(
+                    unresolved_shuffle.stage_id as usize,
                     schema,
-                    output_partition_count: unresolved_shuffle.output_partition_count
-                        as usize,
-                }))
+                    unresolved_shuffle.output_partition_count as usize,
+                )))
             }
         }
     }
@@ -201,11 +204,14 @@ impl PhysicalExtensionCodec for BallistaPhysicalExtensionCodec {
             // to get the true output partitioning
             let output_partitioning = match exec.shuffle_output_partitioning() {
                 Some(Partitioning::Hash(exprs, partition_count)) => {
+                    let physical_extension_codec = DefaultPhysicalExtensionCodec{};
+                    let physical_expr_nodes = exprs
+                        .iter()
+                        .map(|expr| serialize_physical_expr(expr.clone(), &physical_extension_codec))
+                        .collect::<Result<Vec<_>, DataFusionError>>();
+
                     Some(datafusion_proto::protobuf::PhysicalHashRepartition {
-                        hash_expr: exprs
-                            .iter()
-                            .map(|expr| expr.clone().try_into())
-                            .collect::<Result<Vec<_>, DataFusionError>>()?,
+                        hash_expr: physical_expr_nodes?,
                         partition_count: *partition_count as u64,
                     })
                 }

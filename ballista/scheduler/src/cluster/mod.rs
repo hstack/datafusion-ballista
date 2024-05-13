@@ -21,8 +21,7 @@ use std::pin::Pin;
 use std::sync::Arc;
 
 use clap::ArgEnum;
-use datafusion::common::tree_node::TreeNode;
-use datafusion::common::tree_node::VisitRecursion;
+use datafusion::common::tree_node::{TreeNode, TreeNodeRecursion};
 use datafusion::datasource::listing::PartitionedFile;
 use datafusion::datasource::physical_plan::{AvroExec, CsvExec, NdJsonExec, ParquetExec};
 use datafusion::error::DataFusionError;
@@ -689,7 +688,7 @@ pub(crate) fn get_scan_files(
     plan: Arc<dyn ExecutionPlan>,
 ) -> std::result::Result<Vec<Vec<Vec<PartitionedFile>>>, DataFusionError> {
     let mut collector: Vec<Vec<Vec<PartitionedFile>>> = vec![];
-    plan.apply(&mut |plan| {
+    plan.apply(|plan| {
         let plan_any = plan.as_any();
         let file_groups =
             if let Some(parquet_exec) = plan_any.downcast_ref::<ParquetExec>() {
@@ -701,11 +700,11 @@ pub(crate) fn get_scan_files(
             } else if let Some(csv_exec) = plan_any.downcast_ref::<CsvExec>() {
                 csv_exec.base_config().file_groups.clone()
             } else {
-                return Ok(VisitRecursion::Continue);
+                return Ok(TreeNodeRecursion::Continue);
             };
 
         collector.push(file_groups);
-        Ok(VisitRecursion::Skip)
+        Ok(TreeNodeRecursion::Jump)
     })?;
     Ok(collector)
 }
