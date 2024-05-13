@@ -22,7 +22,6 @@ use datafusion::execution::context::DataFilePaths;
 use log::info;
 use parking_lot::Mutex;
 use sqlparser::ast::Statement;
-use std::borrow::Cow;
 use std::collections::HashMap;
 use std::sync::Arc;
 
@@ -35,8 +34,11 @@ use ballista_core::utils::{
 use datafusion_proto::protobuf::LogicalPlanNode;
 
 use datafusion::catalog::TableReference;
+use datafusion::config::{CsvOptions, TableOptions};
 use datafusion::dataframe::DataFrame;
 use datafusion::datasource::{source_as_provider, TableProvider};
+use datafusion::datasource::file_format::parquet::ParquetFormat;
+use datafusion::datasource::listing::{ListingOptions, ListingTable, ListingTableConfig, ListingTableUrl};
 use datafusion::error::{DataFusionError, Result};
 use datafusion::logical_expr::{
     CreateExternalTable, DdlStatement, LogicalPlan, TableScan,
@@ -46,6 +48,7 @@ use datafusion::prelude::{
     SessionConfig, SessionContext,
 };
 use datafusion::sql::parser::{DFParser, Statement as DFStatement};
+use sqlparser::test_utils::table;
 
 struct BallistaContextState {
     /// Ballista configuration
@@ -93,6 +96,63 @@ impl BallistaContext {
 
         let scheduler_url =
             format!("http://{}:{}", &state.scheduler_host, state.scheduler_port);
+        info!(
+            "Connecting to Ballista scheduler at {}",
+            scheduler_url.clone()
+        );
+        let connection = create_grpc_client_connection(scheduler_url.clone())
+            .await
+            .map_err(|e| DataFusionError::Execution(format!("{e:?}")))?;
+        let limit = config.default_grpc_client_max_message_size();
+        let mut scheduler = SchedulerGrpcClient::new(connection)
+            .max_encoding_message_size(limit)
+            .max_decoding_message_size(limit);
+
+        let remote_session_id = scheduler
+            .create_session(CreateSessionParams {
+                settings: config
+                    .settings()
+                    .iter()
+                    .map(|(k, v)| KeyValuePair {
+                        key: k.to_owned(),
+                        value: v.to_owned(),
+                    })
+                    .collect::<Vec<_>>(),
+            })
+            .await
+            .map_err(|e| DataFusionError::Execution(format!("{e:?}")))?
+            .into_inner()
+            .session_id;
+
+        info!(
+            "Server side SessionContext created with session id: {}",
+            remote_session_id
+        );
+
+        let ctx = {
+            create_df_ctx_with_ballista_query_planner::<LogicalPlanNode>(
+                scheduler_url,
+                remote_session_id,
+                state.config(),
+            )
+        };
+
+        Ok(Self {
+            state: Arc::new(Mutex::new(state)),
+            context: Arc::new(ctx),
+        })
+    }
+
+    pub async fn remote_with_scheme(
+        scheme: &str,
+        host: &str,
+        port: u16,
+        config: &BallistaConfig,
+    ) -> ballista_core::error::Result<Self> {
+        let state = BallistaContextState::new(host.to_owned(), port, config);
+
+        let scheduler_url =
+            format!("{}://{}:{}", scheme, &state.scheduler_host, state.scheduler_port);
         info!(
             "Connecting to Ballista scheduler at {}",
             scheduler_url.clone()
@@ -300,6 +360,31 @@ impl BallistaContext {
         }
     }
 
+    pub async fn register_parquet_listing(
+        &self,
+        name: &str,
+        path: &str,
+        options: ParquetReadOptions<'_>,
+    ) -> Result<()> {
+        let listing_options = ListingOptions::new(
+            Arc::new(
+                ParquetFormat::default()
+            )
+        )
+            .with_file_extension(".parquet");
+        let table_path = ListingTableUrl::parse(path)?;
+        let resolved_schema = listing_options.infer_schema(
+            &self.context.state(),
+            &table_path,
+            options.column_hints.clone()
+        ).await?;
+        let config = ListingTableConfig::new(table_path)
+            .with_listing_options(listing_options)
+            .with_schema(resolved_schema);
+        let table = ListingTable::try_new(config)?.with_definition(None);
+        self.register_table(name, Arc::new(table))
+    }
+
     pub async fn register_avro(
         &self,
         name: &str,
@@ -369,12 +454,12 @@ impl BallistaContext {
             for (name, prov) in &state.tables {
                 // ctx is shared between queries, check table exists or not before register
                 let table_ref = TableReference::Bare {
-                    table: Cow::Borrowed(name),
+                    table: name.as_str().into(),
                 };
                 if !ctx.table_exist(table_ref)? {
                     ctx.register_table(
                         TableReference::Bare {
-                            table: Cow::Borrowed(name),
+                            table: name.as_str().into(),
                         },
                         Arc::clone(prov),
                     )?;
@@ -391,14 +476,13 @@ impl BallistaContext {
                     ref name,
                     ref location,
                     ref file_type,
-                    ref has_header,
-                    ref delimiter,
                     ref table_partition_cols,
                     ref if_not_exists,
+                    ref options,
                     ..
                 },
             )) => {
-                let table_exists = ctx.table_exist(name)?;
+                let table_exists = ctx.table_exist(name.clone())?;
                 let schema: SchemaRef = Arc::new(schema.as_ref().to_owned().into());
                 let table_partition_cols = table_partition_cols
                     .iter()
@@ -413,9 +497,16 @@ impl BallistaContext {
                 match (if_not_exists, table_exists) {
                     (_, false) => match file_type.to_lowercase().as_str() {
                         "csv" => {
-                            let mut options = CsvReadOptions::new()
-                                .has_header(*has_header)
-                                .delimiter(*delimiter as u8)
+                            let mut table_options = TableOptions::new();
+                            let config_options = self.context.state().config().options().clone();
+                            table_options.combine_with_session_config(&config_options);
+                            table_options.alter_with_string_hash_map(options);
+                            let mut options = CsvReadOptions::new();
+                            if table_options.csv.has_header().is_some() {
+                                options = options.has_header(table_options.csv.has_header().unwrap());
+                            }
+                            options = options
+                                .delimiter(table_options.csv.delimiter)
                                 .table_partition_cols(table_partition_cols.to_vec());
                             if !schema.fields().is_empty() {
                                 options = options.schema(&schema);
@@ -431,6 +522,16 @@ impl BallistaContext {
                                     .table_partition_cols(table_partition_cols),
                             )
                             .await?;
+                            Ok(DataFrame::new(ctx.state(), plan))
+                        }
+                        "parquetlisting" => {
+                            self.register_parquet_listing(
+                                name.table(),
+                                location,
+                                ParquetReadOptions::default()
+                                    .table_partition_cols(table_partition_cols),
+                            )
+                                .await?;
                             Ok(DataFrame::new(ctx.state(), plan))
                         }
                         "avro" => {
@@ -473,6 +574,7 @@ impl BallistaContext {
 #[cfg(test)]
 #[cfg(feature = "standalone")]
 mod standalone_tests {
+    use datafusion::config::TableParquetOptions;
     use ballista_core::error::Result;
     use datafusion::dataframe::DataFrameWriteOptions;
     use datafusion::datasource::listing::ListingTableUrl;
@@ -503,7 +605,7 @@ mod standalone_tests {
         df.write_parquet(
             &file_path,
             DataFrameWriteOptions::default(),
-            Some(WriterProperties::default()),
+            Some(TableParquetOptions::default()),
         )
         .await?;
         Ok(())
@@ -658,7 +760,7 @@ mod standalone_tests {
                         collect_stat: x.collect_stat,
                         target_partitions: x.target_partitions,
                         file_sort_order: vec![],
-                        file_type_write_options: None,
+                        column_hints: None,
                     };
 
                     let table_paths = listing_table

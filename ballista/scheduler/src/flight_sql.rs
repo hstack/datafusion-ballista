@@ -37,7 +37,7 @@ use arrow_flight::{
 };
 use base64::Engine;
 use futures::Stream;
-use log::{debug, error, warn};
+use log::{debug, error, info, warn};
 use std::convert::TryFrom;
 use std::pin::Pin;
 use std::str::FromStr;
@@ -101,7 +101,15 @@ impl FlightSqlServiceImpl {
             Field::new("table_name", DataType::Utf8, false),
             Field::new("table_type", DataType::Utf8, false),
         ]));
-        let tables = ctx.tables()?; // resolved in #501
+        let catalog_names = ctx.catalog_names();
+        let first_catalog = catalog_names.get(0).unwrap();
+        let schemas = ctx.catalog(first_catalog).unwrap().schema_names();
+        let first_schema = schemas.get(0).unwrap();
+
+        let tables = ctx
+            .catalog(first_catalog).unwrap()
+            .schema(first_schema).unwrap()
+            .table_names(); // resolved in #501
         let names: Vec<_> = tables.iter().map(|it| Some(it.as_str())).collect();
         let types: Vec<_> = names.iter().map(|_| Some("TABLE")).collect();
         let cats: Vec<_> = names.iter().map(|_| None).collect();
@@ -146,6 +154,7 @@ impl FlightSqlServiceImpl {
                 Status::internal(format!("Failed to create SessionContext: {e:?}"))
             })?;
         let handle = Uuid::new_v4();
+        info!(target: "ADR", "Creating context {}", &handle);
         self.contexts.insert(handle, ctx);
         Ok(handle)
     }
@@ -164,6 +173,7 @@ impl FlightSqlServiceImpl {
             Err(Status::internal("Invalid auth header!"))?;
         }
         let auth = authorization[bearer.len()..].to_string();
+        info!(target: "ADR", "Getting context {}", &auth);
 
         let handle = Uuid::from_str(auth.as_str())
             .map_err(|e| Status::internal(format!("Error locking contexts: {e}")))?;
@@ -236,6 +246,7 @@ impl FlightSqlServiceImpl {
         num_rows: &mut i64,
         num_bytes: &mut i64,
     ) -> Result<Vec<FlightEndpoint>, Status> {
+        // info!("job_to_fetch_part EXECUTE");
         let mut fieps: Vec<_> = vec![];
         for loc in completed.partition_location.iter() {
             let (exec_host, exec_port) = if let Some(ref md) = loc.executor_meta {
@@ -298,14 +309,37 @@ impl FlightSqlServiceImpl {
             let fiep = FlightEndpoint {
                 ticket: Some(ticket),
                 location: vec![loc],
+                expiration_time: None,
+                app_metadata: Default::default(),
             };
+            info!("job_to_fetch_part::fiep: {:?}", &fiep);
             fieps.push(fiep);
         }
         Ok(fieps)
     }
 
     fn make_local_fieps(&self, job_id: &str) -> Result<Vec<FlightEndpoint>, Status> {
-        let (host, port) = ("127.0.0.1".to_string(), 50050); // TODO: use advertise host
+        // let (host, port) = ("127.0.0.1".to_string(), 50050); // TODO: use advertise host
+        let (host, port) = match &self
+            .server
+            .state
+            .config
+            .advertise_flight_sql_endpoint
+        {
+            Some(endpoint) => {
+                let advertise_endpoint_vec: Vec<&str> = endpoint.split(':').collect();
+                match advertise_endpoint_vec.as_slice() {
+                    [host_ip, port] => {
+                        (String::from(*host_ip), FromStr::from_str(port).expect("Failed to parse port from advertise-endpoint."))
+                    }
+                    _ => {
+                        Err(Status::internal("advertise-endpoint flag has incorrect format. Expected IP:Port".to_string()))?
+                    }
+                }
+            }
+            None => ("127.0.0.1".to_string(), 50050),
+        };
+
         let fetch = protobuf::FetchPartition {
             job_id: job_id.to_string(),
             stage_id: 0,
@@ -327,6 +361,8 @@ impl FlightSqlServiceImpl {
         let fiep = FlightEndpoint {
             ticket: Some(ticket),
             location: vec![loc],
+            expiration_time: None,
+            app_metadata: Default::default(),
         };
         let fieps = vec![fiep];
         Ok(fieps)
@@ -406,6 +442,7 @@ impl FlightSqlServiceImpl {
             total_records: num_rows,
             total_bytes: num_bytes,
             ordered: false,
+            app_metadata: Default::default(),
         };
         Response::new(info)
     }
@@ -416,6 +453,7 @@ impl FlightSqlServiceImpl {
         plan: &LogicalPlan,
     ) -> Result<Response<FlightInfo>, Status> {
         let job_id = self.enqueue_job(ctx, plan).await?;
+        info!("execute_plan {}", job_id);
 
         // poll for job completion
         let mut num_rows = 0;
@@ -432,10 +470,13 @@ impl FlightSqlServiceImpl {
                 .await?;
             break fieps;
         };
+        info!("execute_plan fieps: {:?}", &fieps);
 
         // Generate response
         let schema_bytes = self.df_schema_to_arrow(plan.schema())?;
+        info!("execute_plan schema_bytes: {}", &schema_bytes.len());
         let resp = Self::create_resp(schema_bytes, fieps, num_rows, num_bytes);
+        info!("execute_plan resp: {:?}", &resp);
         Ok(resp)
     }
 
@@ -487,6 +528,7 @@ impl FlightSqlService for FlightSqlServiceImpl {
         Response<Pin<Box<dyn Stream<Item = Result<HandshakeResponse, Status>> + Send>>>,
         Status,
     > {
+        debug!(target: "ADR", "do_handshake");
         debug!("do_handshake");
         for md in request.metadata().iter() {
             debug!("{:?}", md);
@@ -541,6 +583,7 @@ impl FlightSqlService for FlightSqlServiceImpl {
         request: Request<Ticket>,
         message: arrow_flight::sql::Any,
     ) -> Result<Response<<Self as FlightService>::DoGetStream>, Status> {
+        debug!(target: "ADR", "do_get_fallback type_url: {}", message.type_url);
         debug!("do_get_fallback type_url: {}", message.type_url);
         let ctx = self.get_ctx(&request)?;
         if !message.is::<protobuf::Action>() {
@@ -618,6 +661,7 @@ impl FlightSqlService for FlightSqlServiceImpl {
         query: CommandStatementQuery,
         request: Request<FlightDescriptor>,
     ) -> Result<Response<FlightInfo>, Status> {
+        debug!(target:"ADR", "get_flight_info_statement query:\n{}", query.query);
         debug!("get_flight_info_statement query:\n{}", query.query);
 
         let ctx = self.get_ctx(&request)?;
@@ -633,6 +677,7 @@ impl FlightSqlService for FlightSqlServiceImpl {
         handle: CommandPreparedStatementQuery,
         request: Request<FlightDescriptor>,
     ) -> Result<Response<FlightInfo>, Status> {
+        debug!(target:"ADR", "get_flight_info_prepared_statement");
         debug!("get_flight_info_prepared_statement");
         let ctx = self.get_ctx(&request)?;
         let handle = Uuid::from_slice(handle.prepared_statement_handle.as_ref())
@@ -666,6 +711,7 @@ impl FlightSqlService for FlightSqlServiceImpl {
         _query: CommandGetTables,
         request: Request<FlightDescriptor>,
     ) -> Result<Response<FlightInfo>, Status> {
+        debug!(target:"ADR", "get_flight_info_tables");
         debug!("get_flight_info_tables");
         let ctx = self.get_ctx(&request)?;
         let data = self

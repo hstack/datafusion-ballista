@@ -28,9 +28,8 @@ use ballista_core::serde::scheduler::PartitionId;
 use dashmap::DashMap;
 use datafusion::execution::context::TaskContext;
 use datafusion::execution::runtime_env::RuntimeEnv;
-use datafusion::logical_expr::WindowUDF;
-use datafusion::physical_plan::udaf::AggregateUDF;
-use datafusion::physical_plan::udf::ScalarUDF;
+use datafusion::logical_expr::{AggregateUDF, WindowUDF};
+use datafusion_expr::ScalarUDF;
 use futures::future::AbortHandle;
 use std::collections::HashMap;
 use std::future::Future;
@@ -211,11 +210,8 @@ mod test {
     use crate::execution_engine::DefaultQueryStageExec;
     use ballista_core::serde::scheduler::PartitionId;
     use datafusion::error::{DataFusionError, Result};
-    use datafusion::physical_expr::PhysicalSortExpr;
-    use datafusion::physical_plan::{
-        DisplayAs, DisplayFormatType, ExecutionPlan, Partitioning, RecordBatchStream,
-        SendableRecordBatchStream, Statistics,
-    };
+    use datafusion::physical_expr::{EquivalenceProperties, PhysicalSortExpr};
+    use datafusion::physical_plan::{DisplayAs, DisplayFormatType, ExecutionMode, ExecutionPlan, Partitioning, PlanProperties, RecordBatchStream, SendableRecordBatchStream, Statistics};
     use datafusion::prelude::SessionContext;
     use futures::Stream;
     use std::any::Any;
@@ -247,7 +243,21 @@ mod test {
 
     /// An ExecutionPlan which will never terminate
     #[derive(Debug)]
-    pub struct NeverendingOperator;
+    pub struct NeverendingOperator {
+        cache: PlanProperties
+    }
+
+    impl NeverendingOperator {
+        pub fn new() -> Self {
+            NeverendingOperator {
+                cache: PlanProperties::new(
+                    EquivalenceProperties::new(Arc::new(Schema::empty())),
+                    Partitioning::UnknownPartitioning(1),
+                    ExecutionMode::Unbounded
+                )
+            }
+        }
+    }
 
     impl DisplayAs for NeverendingOperator {
         fn fmt_as(
@@ -272,13 +282,7 @@ mod test {
             Arc::new(Schema::empty())
         }
 
-        fn output_partitioning(&self) -> Partitioning {
-            Partitioning::UnknownPartitioning(1)
-        }
-
-        fn output_ordering(&self) -> Option<&[PhysicalSortExpr]> {
-            None
-        }
+        fn properties(&self) -> &PlanProperties { &self.cache }
 
         fn children(&self) -> Vec<Arc<dyn ExecutionPlan>> {
             vec![]
@@ -316,7 +320,7 @@ mod test {
         let shuffle_write = ShuffleWriterExec::try_new(
             "job-id".to_owned(),
             1,
-            Arc::new(NeverendingOperator),
+            Arc::new(NeverendingOperator::new()),
             work_dir.clone(),
             None,
         )

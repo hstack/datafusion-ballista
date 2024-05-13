@@ -21,11 +21,8 @@ use std::sync::Arc;
 use datafusion::arrow::datatypes::SchemaRef;
 use datafusion::error::{DataFusionError, Result};
 use datafusion::execution::context::TaskContext;
-use datafusion::physical_plan::expressions::PhysicalSortExpr;
-use datafusion::physical_plan::{
-    DisplayAs, DisplayFormatType, ExecutionPlan, Partitioning, SendableRecordBatchStream,
-    Statistics,
-};
+use datafusion::physical_expr::EquivalenceProperties;
+use datafusion::physical_plan::{DisplayAs, DisplayFormatType, ExecutionMode, ExecutionPlan, Partitioning, PlanProperties, SendableRecordBatchStream, Statistics};
 
 /// UnresolvedShuffleExec represents a dependency on the results of a ShuffleWriterExec node which hasn't computed yet.
 ///
@@ -41,6 +38,8 @@ pub struct UnresolvedShuffleExec {
 
     // The partition count this node will have once it is replaced with a ShuffleReaderExec
     pub output_partition_count: usize,
+
+    cache: PlanProperties,
 }
 
 impl UnresolvedShuffleExec {
@@ -50,12 +49,30 @@ impl UnresolvedShuffleExec {
         schema: SchemaRef,
         output_partition_count: usize,
     ) -> Self {
+        let schema_clone = schema.clone();
         Self {
             stage_id,
             schema,
             output_partition_count,
+            cache: Self::compute_properties(schema_clone, output_partition_count)
         }
     }
+
+    /// This function creates the cache object that stores the plan properties such as schema, equivalence properties, ordering, partitioning, etc.
+    fn compute_properties(
+        schema: SchemaRef,
+        output_partition_count: usize,
+    ) -> PlanProperties {
+        // Equivalence Properties
+        let eq_properties = EquivalenceProperties::new(schema);
+
+        PlanProperties::new(
+            eq_properties,
+            Partitioning::UnknownPartitioning(output_partition_count), // Output Partitioning
+            ExecutionMode::Bounded,                             // Execution Mode
+        )
+    }
+
 }
 
 impl DisplayAs for UnresolvedShuffleExec {
@@ -81,15 +98,7 @@ impl ExecutionPlan for UnresolvedShuffleExec {
         self.schema.clone()
     }
 
-    fn output_partitioning(&self) -> Partitioning {
-        // TODO the output partition is known and should be populated here!
-        // see https://github.com/apache/arrow-datafusion/issues/758
-        Partitioning::UnknownPartitioning(self.output_partition_count)
-    }
-
-    fn output_ordering(&self) -> Option<&[PhysicalSortExpr]> {
-        None
-    }
+    fn properties(&self) -> &PlanProperties { &self.cache }
 
     fn children(&self) -> Vec<Arc<dyn ExecutionPlan>> {
         vec![]

@@ -160,6 +160,8 @@ async fn main() -> Result<()> {
         expire_dead_executor_interval_seconds: opt.expire_dead_executor_interval_seconds,
     };
 
+    deltalake_aws::register_handlers(None);
+
     let cluster = BallistaCluster::new_from_config(&config).await?;
 
     start_server(cluster, addr, Arc::new(config)).await?;

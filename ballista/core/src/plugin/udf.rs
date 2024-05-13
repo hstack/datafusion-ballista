@@ -17,13 +17,13 @@
 use crate::error::{BallistaError, Result};
 use crate::plugin::plugin_manager::global_plugin_manager;
 use crate::plugin::{Plugin, PluginEnum, PluginRegistrar};
-use datafusion::physical_plan::udaf::AggregateUDF;
-use datafusion::physical_plan::udf::ScalarUDF;
+use datafusion_expr::ScalarUDF;
 use libloading::{Library, Symbol};
 use std::any::Any;
 use std::collections::HashMap;
 use std::io;
 use std::sync::Arc;
+use datafusion::logical_expr::AggregateUDF;
 
 /// UDF plugin trait
 pub trait UDFPlugin: Plugin {

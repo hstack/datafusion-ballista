@@ -57,18 +57,29 @@ use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Arc;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 use std::{fs::File, pin::Pin};
+use datafusion::datasource::provider::DefaultTableFactory;
+use deltalake::delta_datafusion::DeltaTableFactory;
 use tonic::codegen::StdError;
-use tonic::transport::{Channel, Error, Server};
+use tonic::transport::{Channel, ClientTlsConfig, Error, Server};
+use crate::serde::BallistaMultiLogicalExtensionCodec;
 
 /// Default session builder using the provided configuration
 pub fn default_session_builder(config: SessionConfig) -> SessionState {
-    SessionState::new_with_config_rt(
+    let mut session_state = SessionState::new_with_config_rt(
         config,
         Arc::new(
             RuntimeEnv::new(with_object_store_registry(RuntimeConfig::default()))
                 .unwrap(),
         ),
-    )
+    );
+
+    session_state
+        .table_factories_mut()
+        .insert("DELTATABLE".into(), Arc::new(DeltaTableFactory {}));
+    session_state
+        .table_factories_mut()
+        .insert("PARQUETLISTING".into(), Arc::new(DefaultTableFactory::new()));
+    session_state
 }
 
 /// Stream data to disk in Arrow IPC format
@@ -246,8 +257,16 @@ pub fn create_df_ctx_with_ballista_query_planner<T: 'static + AsLogicalPlan>(
     session_id: String,
     config: &BallistaConfig,
 ) -> SessionContext {
+    // let planner: Arc<BallistaQueryPlanner<T>> =
+    //     Arc::new(BallistaQueryPlanner::new(scheduler_url, config.clone()));
     let planner: Arc<BallistaQueryPlanner<T>> =
-        Arc::new(BallistaQueryPlanner::new(scheduler_url, config.clone()));
+        Arc::new(
+            BallistaQueryPlanner::with_extension(
+                scheduler_url,
+                config.clone(),
+                Arc::new(BallistaMultiLogicalExtensionCodec::default_with_delta()),
+            )
+        );
 
     let session_config = SessionConfig::new()
         .with_target_partitions(config.default_shuffle_partitions())
@@ -260,6 +279,11 @@ pub fn create_df_ctx_with_ballista_query_planner<T: 'static + AsLogicalPlan>(
         ),
     )
     .with_query_planner(planner);
+    deltalake_aws::register_handlers(None);
+    session_state
+        .table_factories_mut()
+        .insert("DELTATABLE".to_string(), Arc::new(DeltaTableFactory {}));
+
     session_state = session_state.with_session_id(session_id);
     // the SessionContext created here is the client side context, but the session_id is from server side.
     SessionContext::new_with_state(session_state)
@@ -341,7 +365,7 @@ where
     D: std::convert::TryInto<tonic::transport::Endpoint>,
     D::Error: Into<StdError>,
 {
-    let endpoint = tonic::transport::Endpoint::new(dst)?
+    let mut endpoint = tonic::transport::Endpoint::new(dst)?
         .connect_timeout(Duration::from_secs(20))
         .timeout(Duration::from_secs(20))
         // Disable Nagle's Algorithm since we don't want packets to wait
@@ -350,6 +374,10 @@ where
         .http2_keep_alive_interval(Duration::from_secs(300))
         .keep_alive_timeout(Duration::from_secs(20))
         .keep_alive_while_idle(true);
+    if endpoint.uri().scheme_str().unwrap() == "https" {
+        endpoint = endpoint
+            .tls_config(ClientTlsConfig::default()).unwrap()
+    }
     endpoint.connect().await
 }
 

@@ -32,12 +32,19 @@ use datafusion_proto::{
     logical_plan::{AsLogicalPlan, DefaultLogicalExtensionCodec, LogicalExtensionCodec},
     physical_plan::{AsExecutionPlan, PhysicalExtensionCodec},
 };
+use deltalake::delta_datafusion::{DeltaLogicalCodec, DeltaPhysicalCodec};
 
 use prost::Message;
 use std::fmt::Debug;
 use std::marker::PhantomData;
 use std::sync::Arc;
 use std::{convert::TryInto, io::Cursor};
+use datafusion::arrow::datatypes::SchemaRef;
+use datafusion::datasource::TableProvider;
+use datafusion::logical_expr::{Extension, LogicalPlan};
+use datafusion::prelude::SessionContext;
+use datafusion_proto::physical_plan::DefaultPhysicalExtensionCodec;
+use datafusion_proto::physical_plan::to_proto::serialize_physical_expr;
 
 use crate::execution_plans::{
     ShuffleReaderExec, ShuffleWriterExec, UnresolvedShuffleExec,
@@ -84,8 +91,8 @@ pub struct BallistaCodec<
 impl Default for BallistaCodec {
     fn default() -> Self {
         Self {
-            logical_extension_codec: Arc::new(DefaultLogicalExtensionCodec {}),
-            physical_extension_codec: Arc::new(BallistaPhysicalExtensionCodec {}),
+            logical_extension_codec: Arc::new(BallistaMultiLogicalExtensionCodec::default_with_delta()),
+            physical_extension_codec: Arc::new(BallistaMultiPhysicalExtensionCodec::default_with_delta()),
             logical_plan_repr: PhantomData,
             physical_plan_repr: PhantomData,
         }
@@ -111,6 +118,143 @@ impl<T: 'static + AsLogicalPlan, U: 'static + AsExecutionPlan> BallistaCodec<T, 
 
     pub fn physical_extension_codec(&self) -> &dyn PhysicalExtensionCodec {
         self.physical_extension_codec.as_ref()
+    }
+}
+
+
+#[derive(Debug)]
+pub struct BallistaMultiLogicalExtensionCodec {
+    codecs: Vec<Arc<dyn LogicalExtensionCodec>>
+}
+
+impl crate::serde::BallistaMultiLogicalExtensionCodec {
+    pub fn new(vec: Vec<Arc<dyn LogicalExtensionCodec>>) -> Self {
+        crate::serde::BallistaMultiLogicalExtensionCodec {
+            codecs: vec,
+        }
+    }
+
+    pub fn default() -> Self {
+        crate::serde::BallistaMultiLogicalExtensionCodec {
+            codecs: vec![
+                Arc::new(DefaultLogicalExtensionCodec{})
+            ],
+        }
+    }
+
+    pub fn default_with_delta() -> Self {
+        crate::serde::BallistaMultiLogicalExtensionCodec {
+            codecs: vec![
+                Arc::new(DeltaLogicalCodec {}),
+                Arc::new(DefaultLogicalExtensionCodec{})
+            ],
+        }
+    }
+}
+
+impl LogicalExtensionCodec for BallistaMultiLogicalExtensionCodec {
+    fn try_decode(&self, buf: &[u8], inputs: &[LogicalPlan], ctx: &SessionContext) -> datafusion::common::Result<Extension> {
+        for codec in self.codecs.iter() {
+            let possible = codec.try_decode(buf, inputs, ctx);
+            if possible.is_ok() {
+                return possible
+            }
+        }
+        Err(DataFusionError::Internal(format!(
+            "decode"
+        )))
+    }
+
+    fn try_encode(&self, node: &Extension, buf: &mut Vec<u8>) -> datafusion::common::Result<()> {
+        for codec in self.codecs.iter() {
+            let possible = codec.try_encode(node, buf);
+            if possible.is_ok() {
+                return possible
+            }
+        }
+        Err(DataFusionError::Internal(format!(
+            "encode:"
+        )))
+    }
+
+    fn try_decode_table_provider(&self, buf: &[u8], schema: SchemaRef, ctx: &SessionContext) -> datafusion::common::Result<Arc<dyn TableProvider>> {
+        for codec in self.codecs.iter() {
+            let possible = codec.try_decode_table_provider(buf, schema.clone(), ctx);
+            if possible.is_ok() {
+                return possible
+            }
+        }
+        Err(DataFusionError::Internal(format!(
+            "decode:"
+        )))
+    }
+
+    fn try_encode_table_provider(&self, node: Arc<dyn TableProvider>, buf: &mut Vec<u8>) -> datafusion::common::Result<()> {
+        for codec in self.codecs.iter() {
+            let possible = codec.try_encode_table_provider(node.clone(), buf);
+            if possible.is_ok() {
+                return possible
+            }
+        }
+        Err(DataFusionError::Internal(format!(
+            "encode_table_provider"
+        )))
+    }
+}
+
+#[derive(Debug)]
+pub struct BallistaMultiPhysicalExtensionCodec {
+    codecs: Vec<Arc<dyn PhysicalExtensionCodec>>
+}
+
+impl BallistaMultiPhysicalExtensionCodec {
+    pub fn new(vec: Vec<Arc<dyn PhysicalExtensionCodec>>) -> Self {
+        BallistaMultiPhysicalExtensionCodec {
+            codecs: vec,
+        }
+    }
+
+    pub fn default() -> Self {
+        BallistaMultiPhysicalExtensionCodec {
+            codecs: vec![
+                Arc::new(BallistaPhysicalExtensionCodec{})
+            ],
+        }
+    }
+
+    pub fn default_with_delta() -> Self {
+        BallistaMultiPhysicalExtensionCodec {
+            codecs: vec![
+                Arc::new(BallistaPhysicalExtensionCodec{}),
+                Arc::new(DeltaPhysicalCodec {})
+            ],
+        }
+    }
+}
+
+impl PhysicalExtensionCodec for BallistaMultiPhysicalExtensionCodec {
+    fn try_decode(&self, buf: &[u8], inputs: &[Arc<dyn ExecutionPlan>], registry: &dyn FunctionRegistry) -> datafusion::common::Result<Arc<dyn ExecutionPlan>> {
+        for codec in self.codecs.iter() {
+            let possible = codec.try_decode(buf, inputs, registry);
+            if possible.is_ok() {
+                return possible
+            }
+        }
+        Err(DataFusionError::Internal(format!(
+            "decode:"
+        )))
+    }
+
+    fn try_encode(&self, node: Arc<dyn ExecutionPlan>, buf: &mut Vec<u8>) -> Result<(), DataFusionError> {
+        for codec in self.codecs.iter() {
+            let possible = codec.try_encode(node.clone(), buf);
+            if possible.is_ok() {
+                return possible
+            }
+        }
+        Err(DataFusionError::Internal(format!(
+            "unsupported plan type: {node:?}"
+        )))
     }
 }
 
@@ -142,10 +286,12 @@ impl PhysicalExtensionCodec for BallistaPhysicalExtensionCodec {
             PhysicalPlanType::ShuffleWriter(shuffle_writer) => {
                 let input = inputs[0].clone();
 
+                let ballista_codec = BallistaCodec::default();
                 let shuffle_output_partitioning = parse_protobuf_hash_partitioning(
                     shuffle_writer.output_partitioning.as_ref(),
                     registry,
                     input.schema().as_ref(),
+                    ballista_codec.physical_extension_codec()
                 )?;
 
                 Ok(Arc::new(ShuffleWriterExec::try_new(
@@ -181,12 +327,11 @@ impl PhysicalExtensionCodec for BallistaPhysicalExtensionCodec {
             }
             PhysicalPlanType::UnresolvedShuffle(unresolved_shuffle) => {
                 let schema = Arc::new(convert_required!(unresolved_shuffle.schema)?);
-                Ok(Arc::new(UnresolvedShuffleExec {
-                    stage_id: unresolved_shuffle.stage_id as usize,
+                Ok(Arc::new(UnresolvedShuffleExec::new(
+                    unresolved_shuffle.stage_id as usize,
                     schema,
-                    output_partition_count: unresolved_shuffle.output_partition_count
-                        as usize,
-                }))
+                    unresolved_shuffle.output_partition_count as usize,
+                )))
             }
         }
     }
@@ -201,11 +346,14 @@ impl PhysicalExtensionCodec for BallistaPhysicalExtensionCodec {
             // to get the true output partitioning
             let output_partitioning = match exec.shuffle_output_partitioning() {
                 Some(Partitioning::Hash(exprs, partition_count)) => {
+                    let physical_extension_codec = DefaultPhysicalExtensionCodec{};
+                    let physical_expr_nodes = exprs
+                        .iter()
+                        .map(|expr| serialize_physical_expr(expr.clone(), &physical_extension_codec))
+                        .collect::<Result<Vec<_>, DataFusionError>>();
+
                     Some(datafusion_proto::protobuf::PhysicalHashRepartition {
-                        hash_expr: exprs
-                            .iter()
-                            .map(|expr| expr.clone().try_into())
-                            .collect::<Result<Vec<_>, DataFusionError>>()?,
+                        hash_expr: physical_expr_nodes?,
                         partition_count: *partition_count as u64,
                     })
                 }

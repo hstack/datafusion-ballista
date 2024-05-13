@@ -133,7 +133,7 @@ impl DistributedPlanner {
         } else if let Some(repart) =
             execution_plan.as_any().downcast_ref::<RepartitionExec>()
         {
-            match repart.output_partitioning() {
+            match repart.properties().output_partitioning() {
                 Partitioning::Hash(_, _) => {
                     let shuffle_writer = create_shuffle_writer(
                         job_id,
@@ -177,7 +177,7 @@ fn create_unresolved_shuffle(
     Arc::new(UnresolvedShuffleExec::new(
         shuffle_writer.stage_id(),
         shuffle_writer.schema(),
-        shuffle_writer.output_partitioning().partition_count(),
+        shuffle_writer.properties().output_partitioning().partition_count(),
     ))
 }
 
@@ -263,7 +263,7 @@ pub fn rollback_resolved_shuffles(
     for child in stage.children() {
         if let Some(shuffle_reader) = child.as_any().downcast_ref::<ShuffleReaderExec>() {
             let output_partition_count =
-                shuffle_reader.output_partitioning().partition_count();
+                shuffle_reader.properties().output_partitioning().partition_count();
             let stage_id = shuffle_reader.stage_id;
 
             let unresolved_shuffle = Arc::new(UnresolvedShuffleExec::new(
@@ -467,7 +467,7 @@ order by
 
         ShuffleWriterExec: Some(Hash([Column { name: "l_shipmode", index: 0 }], 2))
           AggregateExec: mode=Partial, gby=[l_shipmode@0 as l_shipmode], aggr=[SUM(CASE WHEN orders.o_orderpriority = Utf8("1-URGENT") OR orders.o_orderpriority = Utf8("2-HIGH") THEN Int64(1) ELSE Int64(0) END), SUM(CASE WHEN orders.o_orderpriority != Utf8("1-URGENT") AND orders.o_orderpriority != Utf8("2-HIGH") THEN Int64(1) ELSE Int64(0) END)]
-            ProjectionExec: expr=[l_shipmode@1 as l_shipmode, o_orderpriority@3 as o_orderpriority]
+            //ProjectionExec: expr=[l_shipmode@1 as l_shipmode, o_orderpriority@3 as o_orderpriority]
               CoalesceBatchesExec: target_batch_size=8192
                 HashJoinExec: mode=Partitioned, join_type=Inner, on=[(Column { name: "l_orderkey", index: 0 }, Column { name: "o_orderkey", index: 0 })]
                   CoalesceBatchesExec: target_batch_size=8192
@@ -495,7 +495,7 @@ order by
         assert_eq!(
             2,
             stages[0].children()[0]
-                .output_partitioning()
+                .properties().output_partitioning()
                 .partition_count()
         );
         assert_eq!(
@@ -510,7 +510,7 @@ order by
         assert_eq!(
             1,
             stages[1].children()[0]
-                .output_partitioning()
+                .properties().output_partitioning()
                 .partition_count()
         );
         assert_eq!(
@@ -523,7 +523,7 @@ order by
 
         // join and partial hash aggregate
         let input = stages[2].children()[0].clone();
-        assert_eq!(2, input.output_partitioning().partition_count());
+        assert_eq!(2, input.properties().output_partitioning().partition_count());
         assert_eq!(
             2,
             stages[2]
@@ -534,10 +534,11 @@ order by
 
         let hash_agg = downcast_exec!(input, AggregateExec);
 
-        let projection = hash_agg.children()[0].clone();
-        let projection = downcast_exec!(projection, ProjectionExec);
 
-        let coalesce_batches = projection.children()[0].clone();
+        //let projection = hash_agg.children()[0].clone();
+        //let projection = downcast_exec!(projection, ProjectionExec);
+
+        let coalesce_batches = hash_agg.children()[0].clone();
         let coalesce_batches = downcast_exec!(coalesce_batches, CoalesceBatchesExec);
 
         let join = coalesce_batches.children()[0].clone();
@@ -561,6 +562,7 @@ order by
         assert_eq!(
             2,
             stages[3].children()[0]
+                .properties()
                 .output_partitioning()
                 .partition_count()
         );
@@ -570,6 +572,7 @@ order by
         assert_eq!(
             1,
             stages[4].children()[0]
+                .properties()
                 .output_partitioning()
                 .partition_count()
         );

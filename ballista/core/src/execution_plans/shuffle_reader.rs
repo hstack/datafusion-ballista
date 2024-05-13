@@ -36,17 +36,14 @@ use datafusion::arrow::error::ArrowError;
 use datafusion::arrow::record_batch::RecordBatch;
 
 use datafusion::error::Result;
-use datafusion::physical_plan::expressions::PhysicalSortExpr;
 use datafusion::physical_plan::metrics::{ExecutionPlanMetricsSet, MetricsSet};
-use datafusion::physical_plan::{
-    ColumnStatistics, DisplayAs, DisplayFormatType, ExecutionPlan, Partitioning,
-    RecordBatchStream, SendableRecordBatchStream, Statistics,
-};
+use datafusion::physical_plan::{ColumnStatistics, DisplayAs, DisplayFormatType, ExecutionMode, ExecutionPlan, Partitioning, PlanProperties, RecordBatchStream, SendableRecordBatchStream, Statistics};
 use futures::{Stream, StreamExt, TryStreamExt};
 
 use crate::error::BallistaError;
 use datafusion::execution::context::TaskContext;
-use datafusion::physical_plan::common::AbortOnDropMany;
+use datafusion::physical_expr::EquivalenceProperties;
+// use datafusion::physical_plan::common::AbortOnDropMany;
 use datafusion::physical_plan::stream::RecordBatchStreamAdapter;
 use itertools::Itertools;
 use log::{error, info};
@@ -67,6 +64,7 @@ pub struct ShuffleReaderExec {
     pub partition: Vec<Vec<PartitionLocation>>,
     /// Execution metrics
     metrics: ExecutionPlanMetricsSet,
+    cache: PlanProperties,
 }
 
 impl ShuffleReaderExec {
@@ -76,13 +74,31 @@ impl ShuffleReaderExec {
         partition: Vec<Vec<PartitionLocation>>,
         schema: SchemaRef,
     ) -> Result<Self> {
+        let partition_len = partition.len();
         Ok(Self {
             stage_id,
-            schema,
+            schema: schema.clone(),
             partition,
             metrics: ExecutionPlanMetricsSet::new(),
+            cache: Self::compute_properties(schema.clone(), partition_len),
         })
     }
+
+    /// This function creates the cache object that stores the plan properties such as schema, equivalence properties, ordering, partitioning, etc.
+    fn compute_properties(
+        schema: SchemaRef,
+        partition_len: usize
+    ) -> PlanProperties {
+        // Equivalence Properties
+        let eq_properties = EquivalenceProperties::new(schema);
+
+        PlanProperties::new(
+            eq_properties,
+            Partitioning::UnknownPartitioning(partition_len), // Output Partitioning
+            ExecutionMode::Bounded,                             // Execution Mode
+        )
+    }
+
 }
 
 impl DisplayAs for ShuffleReaderExec {
@@ -108,15 +124,7 @@ impl ExecutionPlan for ShuffleReaderExec {
         self.schema.clone()
     }
 
-    fn output_partitioning(&self) -> Partitioning {
-        // TODO partitioning may be known and could be populated here
-        // see https://github.com/apache/arrow-datafusion/issues/758
-        Partitioning::UnknownPartitioning(self.partition.len())
-    }
-
-    fn output_ordering(&self) -> Option<&[PhysicalSortExpr]> {
-        None
-    }
+    fn properties(&self) -> &PlanProperties { &self.cache }
 
     fn children(&self) -> Vec<Arc<dyn ExecutionPlan>> {
         vec![]
@@ -242,9 +250,6 @@ impl RecordBatchStream for LocalShuffleStream {
 /// Adapter for a tokio ReceiverStream that implements the SendableRecordBatchStream interface
 struct AbortableReceiverStream {
     inner: ReceiverStream<result::Result<SendableRecordBatchStream, BallistaError>>,
-
-    #[allow(dead_code)]
-    drop_helper: AbortOnDropMany<()>,
 }
 
 impl AbortableReceiverStream {
@@ -258,7 +263,6 @@ impl AbortableReceiverStream {
         let inner = ReceiverStream::new(rx);
         Self {
             inner,
-            drop_helper: AbortOnDropMany(join_handles),
         }
     }
 }
@@ -606,7 +610,7 @@ mod tests {
         let file_path = path.value(0);
         let reader = fetch_partition_local_inner(file_path).unwrap();
 
-        let mut stream: Pin<Box<dyn RecordBatchStream + Send>> =
+        let mut stream: Pin<Box<dyn RecordBatchStream<Item=Result<RecordBatch>> + Send>> =
             async { Box::pin(LocalShuffleStream::new(reader)) }.await;
 
         let result = utils::collect_stream(&mut stream)

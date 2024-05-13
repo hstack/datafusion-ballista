@@ -16,7 +16,7 @@
 // under the License.
 
 use chrono::{TimeZone, Utc};
-use datafusion::common::tree_node::{Transformed, TreeNode};
+use datafusion::common::tree_node::{Transformed, TransformedResult, TreeNode};
 use datafusion::execution::runtime_env::RuntimeEnv;
 use datafusion::logical_expr::{AggregateUDF, ScalarUDF, WindowUDF};
 use datafusion::physical_plan::metrics::{
@@ -193,6 +193,11 @@ impl TryInto<MetricValue> for protobuf::OperatorMetric {
             None => Err(BallistaError::General(
                 "scheduler::from_proto(OperatorMetric) metric is None.".to_owned(),
             )),
+            Some(operator_metric::Metric::SpilledRows(rows)) => {
+                let count = Count::new();
+                count.add(rows as usize);
+                Ok(MetricValue::SpilledRows(count))
+            }
         }
     }
 }
@@ -415,9 +420,9 @@ pub fn get_task_definition_vec<
 fn reset_metrics_for_execution_plan(
     plan: Arc<dyn ExecutionPlan>,
 ) -> Result<Arc<dyn ExecutionPlan>, BallistaError> {
-    plan.transform(&|plan| {
+    plan.transform(|plan| {
         let children = plan.children().clone();
-        plan.with_new_children(children).map(Transformed::Yes)
-    })
+        Ok(plan.with_new_children(children).map(Transformed::yes)?)
+    }).data()
     .map_err(BallistaError::DataFusionError)
 }

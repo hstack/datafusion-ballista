@@ -83,6 +83,9 @@ struct Args {
     #[clap(long, help = "Ballista scheduler port")]
     port: Option<u16>,
 
+    #[clap(long, help = "use tls ? ")]
+    tls: bool,
+
     #[clap(
         short,
         long,
@@ -118,7 +121,11 @@ pub async fn main() -> Result<()> {
     let ctx = match (args.host, args.port) {
         (Some(ref host), Some(port)) => {
             // Distributed execution with Ballista Remote
-            BallistaContext::remote(host, port, &ballista_config).await?
+            if !args.tls {
+                BallistaContext::remote(host, port, &ballista_config).await?
+            } else {
+                BallistaContext::remote_with_scheme("https", host, port, &ballista_config).await?
+            }
         }
         _ => {
             let concurrent_tasks = if let Some(concurrent_tasks) = args.concurrent_tasks {
@@ -135,6 +142,7 @@ pub async fn main() -> Result<()> {
         format: args.format,
         quiet: args.quiet,
         maxrows: MaxRows::Unlimited,
+        color: true,
     };
 
     let files = args.file;
