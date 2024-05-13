@@ -121,9 +121,14 @@ impl BallistaObjectStoreRegistry {
             }
         }
 
+        // ADR: FIXME @DeltaBallistaInteraction
+        // This interaction point is seen with delta-rs.
+        // If we do not attempt to register the object store in the DeltaScan physical plan implementation
+        // this will error out, because the store for the delta table does not exist
         Err(DataFusionError::Execution(format!(
             "No object store available for: {url}"
         )))
+
     }
 }
 
