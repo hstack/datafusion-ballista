@@ -59,7 +59,7 @@ use std::time::{Duration, SystemTime, UNIX_EPOCH};
 use std::{fs::File, pin::Pin};
 use deltalake::delta_datafusion::DeltaTableFactory;
 use tonic::codegen::StdError;
-use tonic::transport::{Channel, Error, Server};
+use tonic::transport::{Channel, ClientTlsConfig, Error, Server};
 use crate::serde::BallistaMultiLogicalExtensionCodec;
 
 /// Default session builder using the provided configuration
@@ -360,7 +360,7 @@ where
     D: std::convert::TryInto<tonic::transport::Endpoint>,
     D::Error: Into<StdError>,
 {
-    let endpoint = tonic::transport::Endpoint::new(dst)?
+    let mut endpoint = tonic::transport::Endpoint::new(dst)?
         .connect_timeout(Duration::from_secs(20))
         .timeout(Duration::from_secs(20))
         // Disable Nagle's Algorithm since we don't want packets to wait
@@ -369,6 +369,10 @@ where
         .http2_keep_alive_interval(Duration::from_secs(300))
         .keep_alive_timeout(Duration::from_secs(20))
         .keep_alive_while_idle(true);
+    if endpoint.uri().scheme_str().unwrap() == "https" {
+        endpoint = endpoint
+            .tls_config(ClientTlsConfig::default()).unwrap()
+    }
     endpoint.connect().await
 }
 

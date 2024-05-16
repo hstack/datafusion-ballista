@@ -139,6 +139,63 @@ impl BallistaContext {
         })
     }
 
+    pub async fn remote_with_scheme(
+        scheme: &str,
+        host: &str,
+        port: u16,
+        config: &BallistaConfig,
+    ) -> ballista_core::error::Result<Self> {
+        let state = BallistaContextState::new(host.to_owned(), port, config);
+
+        let scheduler_url =
+            format!("{}://{}:{}", scheme, &state.scheduler_host, state.scheduler_port);
+        info!(
+            "Connecting to Ballista scheduler at {}",
+            scheduler_url.clone()
+        );
+        let connection = create_grpc_client_connection(scheduler_url.clone())
+            .await
+            .map_err(|e| DataFusionError::Execution(format!("{e:?}")))?;
+        let limit = config.default_grpc_client_max_message_size();
+        let mut scheduler = SchedulerGrpcClient::new(connection)
+            .max_encoding_message_size(limit)
+            .max_decoding_message_size(limit);
+
+        let remote_session_id = scheduler
+            .create_session(CreateSessionParams {
+                settings: config
+                    .settings()
+                    .iter()
+                    .map(|(k, v)| KeyValuePair {
+                        key: k.to_owned(),
+                        value: v.to_owned(),
+                    })
+                    .collect::<Vec<_>>(),
+            })
+            .await
+            .map_err(|e| DataFusionError::Execution(format!("{e:?}")))?
+            .into_inner()
+            .session_id;
+
+        info!(
+            "Server side SessionContext created with session id: {}",
+            remote_session_id
+        );
+
+        let ctx = {
+            create_df_ctx_with_ballista_query_planner::<LogicalPlanNode>(
+                scheduler_url,
+                remote_session_id,
+                state.config(),
+            )
+        };
+
+        Ok(Self {
+            state: Arc::new(Mutex::new(state)),
+            context: Arc::new(ctx),
+        })
+    }
+
     #[cfg(feature = "standalone")]
     pub async fn standalone(
         config: &BallistaConfig,
