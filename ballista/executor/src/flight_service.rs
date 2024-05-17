@@ -137,6 +137,7 @@ impl FlightService for BallistaFlightService {
         _request: Request<Streaming<HandshakeRequest>>,
     ) -> Result<Response<Self::HandshakeStream>, Status> {
         let token = uuid::Uuid::new_v4();
+        info!(target:"ADR", "do_handshake token={}", token);
         info!("do_handshake token={}", token);
 
         let result = HandshakeResponse {

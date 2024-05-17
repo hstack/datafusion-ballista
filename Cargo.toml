@@ -83,6 +83,9 @@ overflow-checks = false
 panic = 'unwind'
 rpath = false
 
+[profile.dev]
+debug = 1
+
 [patch.crates-io]
 datafusion = { git = 'https://github.com/hstack/arrow-datafusion.git', branch = 'main' }
 datafusion-common = { git = 'https://github.com/hstack/arrow-datafusion.git', branch = 'main' }
