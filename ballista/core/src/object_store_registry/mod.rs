@@ -33,6 +33,7 @@ use object_store::azure::MicrosoftAzureBuilder;
 use object_store::gcp::GoogleCloudStorageBuilder;
 use object_store::ObjectStore;
 use std::sync::Arc;
+use object_store::http::HttpBuilder;
 use url::Url;
 
 /// Get a RuntimeConfig with specific ObjectStoreRegistry
@@ -102,6 +103,17 @@ impl BallistaObjectStoreRegistry {
                     );
                     return Ok(store);
                 }
+            }
+        }
+
+        {
+            if url.to_string().starts_with("https://")
+                || url.to_string().starts_with("http://")
+            {
+                let store = HttpBuilder::new()
+                    .with_url(url.origin().ascii_serialization())
+                    .build()?;
+                return Ok(Arc::new(store));
             }
         }
 
