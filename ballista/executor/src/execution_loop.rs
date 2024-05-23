@@ -145,6 +145,7 @@ pub(crate) fn any_to_string(any: &Box<dyn Any + Send>) -> String {
     }
 }
 
+#[tracing::instrument(level = "info", skip(executor, permit, task_status_sender, task, codec, dedicated_executor))]
 async fn run_received_task<T: 'static + AsLogicalPlan, U: 'static + AsExecutionPlan>(
     executor: Arc<Executor>,
     permit: OwnedSemaphorePermit,
