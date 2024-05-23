@@ -107,6 +107,7 @@ pub struct ExecutorProcessConfig {
     pub execution_engine: Option<Arc<dyn ExecutionEngine>>,
 }
 
+#[tracing::instrument(level = "info", skip(opt))]
 pub async fn start_executor_process(opt: Arc<ExecutorProcessConfig>) -> Result<()> {
     let rust_log = env::var(EnvFilter::DEFAULT_ENV);
     let log_filter =
@@ -483,6 +484,7 @@ pub async fn start_executor_process(opt: Arc<ExecutorProcessConfig>) -> Result<(
 }
 
 // Arrow flight service
+#[tracing::instrument(level = "info", skip(addr, grpc_shutdown))]
 async fn flight_server_run(
     addr: SocketAddr,
     mut grpc_shutdown: Shutdown,
@@ -506,6 +508,7 @@ async fn flight_server_run(
 }
 
 // Check the status of long running services
+#[tracing::instrument(level = "info", skip(service_handlers))]
 async fn check_services(
     service_handlers: &mut FuturesUnordered<JoinHandle<Result<(), BallistaError>>>,
 ) -> Result<(), BallistaError> {
@@ -528,6 +531,7 @@ async fn check_services(
     }
 }
 
+#[tracing::instrument(level = "info", skip(work_dir, seconds))]
 /// This function will be scheduled periodically for cleanup the job shuffle data left on the executor.
 /// Only directories will be checked cleaned.
 async fn clean_shuffle_data_loop(work_dir: &str, seconds: u64) -> Result<()> {
@@ -567,6 +571,7 @@ async fn clean_shuffle_data_loop(work_dir: &str, seconds: u64) -> Result<()> {
     Ok(())
 }
 
+#[tracing::instrument(level = "info", skip(work_dir))]
 /// This function will clean up all shuffle data on this executor
 async fn clean_all_shuffle_data(work_dir: &str) -> Result<()> {
     let mut dir = fs::read_dir(work_dir).await?;
@@ -591,6 +596,7 @@ async fn clean_all_shuffle_data(work_dir: &str) -> Result<()> {
     Ok(())
 }
 
+#[tracing::instrument(level = "info", skip(dir, ttl_seconds))]
 /// Determines if a directory contains files newer than the cutoff time.
 /// If return true, it means the directory contains files newer than the cutoff time. It satisfy the ttl and should not be deleted.
 pub async fn satisfy_dir_ttl(dir: DirEntry, ttl_seconds: u64) -> Result<bool> {

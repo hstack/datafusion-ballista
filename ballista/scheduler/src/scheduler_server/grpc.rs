@@ -60,6 +60,7 @@ use crate::scheduler_server::SchedulerServer;
 impl<T: 'static + AsLogicalPlan, U: 'static + AsExecutionPlan> SchedulerGrpc
     for SchedulerServer<T, U>
 {
+    #[tracing::instrument(level = "info", skip(self, request))]
     async fn poll_work(
         &self,
         request: Request<PollWorkParams>,
@@ -151,6 +152,7 @@ impl<T: 'static + AsLogicalPlan, U: 'static + AsExecutionPlan> SchedulerGrpc
         }
     }
 
+    #[tracing::instrument(level = "info", skip(self, request))]
     async fn register_executor(
         &self,
         request: Request<RegisterExecutorParams>,
@@ -187,6 +189,7 @@ impl<T: 'static + AsLogicalPlan, U: 'static + AsExecutionPlan> SchedulerGrpc
         }
     }
 
+    #[tracing::instrument(level = "info", skip(self, request))]
     async fn heart_beat_from_executor(
         &self,
         request: Request<HeartBeatParams>,
@@ -256,6 +259,7 @@ impl<T: 'static + AsLogicalPlan, U: 'static + AsExecutionPlan> SchedulerGrpc
         Ok(Response::new(HeartBeatResult { reregister: false }))
     }
 
+    #[tracing::instrument(level = "info", skip(self, request))]
     async fn update_task_status(
         &self,
         request: Request<UpdateTaskStatusParams>,
@@ -284,6 +288,7 @@ impl<T: 'static + AsLogicalPlan, U: 'static + AsExecutionPlan> SchedulerGrpc
         Ok(Response::new(UpdateTaskStatusResult { success: true }))
     }
 
+    #[tracing::instrument(level = "info", skip(self, request))]
     async fn get_file_metadata(
         &self,
         request: Request<GetFileMetadataParams>,
@@ -334,6 +339,7 @@ impl<T: 'static + AsLogicalPlan, U: 'static + AsExecutionPlan> SchedulerGrpc
         }))
     }
 
+    #[tracing::instrument(level = "info", skip(self, request))]
     async fn create_session(
         &self,
         request: Request<CreateSessionParams>,
@@ -364,6 +370,7 @@ impl<T: 'static + AsLogicalPlan, U: 'static + AsExecutionPlan> SchedulerGrpc
         }))
     }
 
+    #[tracing::instrument(level = "info", skip(self, request))]
     async fn update_session(
         &self,
         request: Request<UpdateSessionParams>,
@@ -391,6 +398,7 @@ impl<T: 'static + AsLogicalPlan, U: 'static + AsExecutionPlan> SchedulerGrpc
         Ok(Response::new(UpdateSessionResult { success: true }))
     }
 
+    #[tracing::instrument(level = "info", skip(self, request))]
     async fn remove_session(
         &self,
         request: Request<RemoveSessionParams>,
@@ -410,6 +418,7 @@ impl<T: 'static + AsLogicalPlan, U: 'static + AsExecutionPlan> SchedulerGrpc
         Ok(Response::new(RemoveSessionResult { success: true }))
     }
 
+    #[tracing::instrument(level = "info", skip(self, request))]
     async fn execute_query(
         &self,
         request: Request<ExecuteQueryParams>,
@@ -538,6 +547,7 @@ impl<T: 'static + AsLogicalPlan, U: 'static + AsExecutionPlan> SchedulerGrpc
         }
     }
 
+    #[tracing::instrument(level = "info", skip(self, request))]
     async fn get_job_status(
         &self,
         request: Request<GetJobStatusParams>,
@@ -554,6 +564,7 @@ impl<T: 'static + AsLogicalPlan, U: 'static + AsExecutionPlan> SchedulerGrpc
         }
     }
 
+    #[tracing::instrument(level = "info", skip(self, request))]
     async fn executor_stopped(
         &self,
         request: Request<ExecutorStoppedParams>,
@@ -585,6 +596,7 @@ impl<T: 'static + AsLogicalPlan, U: 'static + AsExecutionPlan> SchedulerGrpc
         Ok(Response::new(ExecutorStoppedResult {}))
     }
 
+    #[tracing::instrument(level = "info", skip(self, request))]
     async fn cancel_job(
         &self,
         request: Request<CancelJobParams>,
@@ -609,6 +621,7 @@ impl<T: 'static + AsLogicalPlan, U: 'static + AsExecutionPlan> SchedulerGrpc
         Ok(Response::new(CancelJobResult { cancelled: true }))
     }
 
+    #[tracing::instrument(level = "info", skip(self, request))]
     async fn clean_job_data(
         &self,
         request: Request<CleanJobDataParams>,

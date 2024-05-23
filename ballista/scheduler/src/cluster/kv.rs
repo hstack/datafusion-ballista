@@ -78,6 +78,7 @@ pub struct KeyValueState<
 impl<S: KeyValueStore, T: 'static + AsLogicalPlan, U: 'static + AsExecutionPlan>
     KeyValueState<S, T, U>
 {
+    #[tracing::instrument(level = "info", skip(scheduler, store, codec, session_builder))]
     pub fn new(
         scheduler: impl Into<String>,
         store: S,
@@ -95,6 +96,7 @@ impl<S: KeyValueStore, T: 'static + AsLogicalPlan, U: 'static + AsExecutionPlan>
         }
     }
 
+    #[tracing::instrument(level = "info", skip(self))]
     /// Initialize the set of active executor heartbeats from storage
     async fn init_active_executor_heartbeats(&self) -> Result<()> {
         let heartbeats = self.store.scan(Keyspace::Heartbeats, None).await?;
@@ -113,6 +115,7 @@ impl<S: KeyValueStore, T: 'static + AsLogicalPlan, U: 'static + AsExecutionPlan>
         Ok(())
     }
 
+    #[tracing::instrument(level = "info", skip(self))]
     /// Return the stream of executor heartbeats observed by all schedulers in the cluster.
     /// This can be aggregated to provide an eventually consistent view of all executors within the cluster
     async fn executor_heartbeat_stream(&self) -> Result<ExecutorHeartbeatStream> {
@@ -139,6 +142,7 @@ impl<S: KeyValueStore, T: 'static + AsLogicalPlan, U: 'static + AsExecutionPlan>
             .boxed())
     }
 
+    #[tracing::instrument(level = "info", skip(self, available_slots, executors))]
     /// Get the topology nodes of the cluster for consistent hashing
     fn get_topology_nodes(
         &self,
@@ -180,6 +184,7 @@ impl<S: KeyValueStore, T: 'static + AsLogicalPlan, U: 'static + AsExecutionPlan>
 impl<S: KeyValueStore, T: 'static + AsLogicalPlan, U: 'static + AsExecutionPlan>
     ClusterState for KeyValueState<S, T, U>
 {
+    #[tracing::instrument(level = "info", skip(self))]
     /// Initialize a background process that will listen for executor heartbeats and update the in-memory cache
     /// of executor heartbeats
     async fn init(&self) -> Result<()> {
@@ -214,6 +219,7 @@ impl<S: KeyValueStore, T: 'static + AsLogicalPlan, U: 'static + AsExecutionPlan>
         Ok(())
     }
 
+    #[tracing::instrument(level = "info", skip(self, distribution, active_jobs, executors))]
     async fn bind_schedulable_tasks(
         &self,
         distribution: TaskDistributionPolicy,
@@ -317,6 +323,7 @@ impl<S: KeyValueStore, T: 'static + AsLogicalPlan, U: 'static + AsExecutionPlan>
         .await
     }
 
+    #[tracing::instrument(level = "info", skip(self, executor_slots))]
     async fn unbind_tasks(&self, executor_slots: Vec<ExecutorSlot>) -> Result<()> {
         let mut increments = HashMap::new();
         for (executor_id, num_slots) in executor_slots {
@@ -349,6 +356,7 @@ impl<S: KeyValueStore, T: 'static + AsLogicalPlan, U: 'static + AsExecutionPlan>
         .await
     }
 
+    #[tracing::instrument(level = "info", skip(self, metadata, spec))]
     async fn register_executor(
         &self,
         metadata: ExecutorMetadata,
@@ -407,6 +415,7 @@ impl<S: KeyValueStore, T: 'static + AsLogicalPlan, U: 'static + AsExecutionPlan>
         Ok(())
     }
 
+    #[tracing::instrument(level = "info", skip(self, metadata))]
     async fn save_executor_metadata(&self, metadata: ExecutorMetadata) -> Result<()> {
         let executor_id = metadata.id.clone();
 
@@ -424,6 +433,7 @@ impl<S: KeyValueStore, T: 'static + AsLogicalPlan, U: 'static + AsExecutionPlan>
         Ok(())
     }
 
+    #[tracing::instrument(level = "info", skip(self, executor_id))]
     async fn get_executor_metadata(&self, executor_id: &str) -> Result<ExecutorMetadata> {
         let metadata = if let Some(metadata) = self.executors.get(executor_id) {
             metadata.value().clone()
@@ -440,6 +450,7 @@ impl<S: KeyValueStore, T: 'static + AsLogicalPlan, U: 'static + AsExecutionPlan>
         Ok(metadata)
     }
 
+    #[tracing::instrument(level = "info", skip(self, heartbeat))]
     async fn save_executor_heartbeat(&self, heartbeat: ExecutorHeartbeat) -> Result<()> {
         let executor_id = heartbeat.executor_id.clone();
         self.store
@@ -453,6 +464,7 @@ impl<S: KeyValueStore, T: 'static + AsLogicalPlan, U: 'static + AsExecutionPlan>
         Ok(())
     }
 
+    #[tracing::instrument(level = "info", skip(self, executor_id))]
     async fn remove_executor(&self, executor_id: &str) -> Result<()> {
         let value = ExecutorHeartbeat {
             executor_id: executor_id.to_owned(),
@@ -474,6 +486,7 @@ impl<S: KeyValueStore, T: 'static + AsLogicalPlan, U: 'static + AsExecutionPlan>
         Ok(())
     }
 
+    #[tracing::instrument(level = "info", skip(self))]
     fn executor_heartbeats(&self) -> HashMap<String, ExecutorHeartbeat> {
         self.executor_heartbeats
             .iter()
@@ -481,6 +494,7 @@ impl<S: KeyValueStore, T: 'static + AsLogicalPlan, U: 'static + AsExecutionPlan>
             .collect()
     }
 
+    #[tracing::instrument(level = "info", skip(self, executor_id))]
     fn get_executor_heartbeat(&self, executor_id: &str) -> Option<ExecutorHeartbeat> {
         self.executor_heartbeats
             .get(executor_id)
@@ -492,6 +506,7 @@ impl<S: KeyValueStore, T: 'static + AsLogicalPlan, U: 'static + AsExecutionPlan>
 impl<S: KeyValueStore, T: 'static + AsLogicalPlan, U: 'static + AsExecutionPlan> JobState
     for KeyValueState<S, T, U>
 {
+    #[tracing::instrument(level = "info", skip(self, job_id, job_name, queued_at))]
     fn accept_job(&self, job_id: &str, job_name: &str, queued_at: u64) -> Result<()> {
         self.queued_jobs
             .insert(job_id.to_string(), (job_name.to_string(), queued_at));
@@ -499,10 +514,12 @@ impl<S: KeyValueStore, T: 'static + AsLogicalPlan, U: 'static + AsExecutionPlan>
         Ok(())
     }
 
+    #[tracing::instrument(level = "info", skip(self))]
     fn pending_job_number(&self) -> usize {
         self.queued_jobs.len()
     }
 
+    #[tracing::instrument(level = "info", skip(self, job_id, graph))]
     async fn submit_job(&self, job_id: String, graph: &ExecutionGraph) -> Result<()> {
         if self.queued_jobs.get(&job_id).is_some() {
             let status = graph.status();
@@ -534,10 +551,12 @@ impl<S: KeyValueStore, T: 'static + AsLogicalPlan, U: 'static + AsExecutionPlan>
         }
     }
 
+    #[tracing::instrument(level = "info", skip(self))]
     async fn get_jobs(&self) -> Result<HashSet<String>> {
         self.store.scan_keys(Keyspace::JobStatus).await
     }
 
+    #[tracing::instrument(level = "info", skip(self, job_id))]
     async fn get_job_status(&self, job_id: &str) -> Result<Option<JobStatus>> {
         if let Some((job_name, queued_at)) = self.queued_jobs.get(job_id).as_deref() {
             Ok(Some(JobStatus {
@@ -556,6 +575,7 @@ impl<S: KeyValueStore, T: 'static + AsLogicalPlan, U: 'static + AsExecutionPlan>
         }
     }
 
+    #[tracing::instrument(level = "info", skip(self, job_id))]
     async fn get_execution_graph(&self, job_id: &str) -> Result<Option<ExecutionGraph>> {
         let value = self.store.get(Keyspace::ExecutionGraph, job_id).await?;
 
@@ -573,6 +593,7 @@ impl<S: KeyValueStore, T: 'static + AsLogicalPlan, U: 'static + AsExecutionPlan>
         ))
     }
 
+    #[tracing::instrument(level = "info", skip(self, job_id, graph))]
     async fn save_job(&self, job_id: &str, graph: &ExecutionGraph) -> Result<()> {
         let status = graph.status();
         let encoded_graph =
@@ -594,6 +615,7 @@ impl<S: KeyValueStore, T: 'static + AsLogicalPlan, U: 'static + AsExecutionPlan>
             .await
     }
 
+    #[tracing::instrument(level = "info", skip(self, job_id, reason))]
     async fn fail_unscheduled_job(&self, job_id: &str, reason: String) -> Result<()> {
         if let Some((job_id, (job_name, queued_at))) = self.queued_jobs.remove(job_id) {
             let status = JobStatus {
@@ -617,6 +639,7 @@ impl<S: KeyValueStore, T: 'static + AsLogicalPlan, U: 'static + AsExecutionPlan>
         }
     }
 
+    #[tracing::instrument(level = "info", skip(self, job_id))]
     async fn remove_job(&self, job_id: &str) -> Result<()> {
         if self.queued_jobs.remove(job_id).is_none() {
             self.store
@@ -634,12 +657,14 @@ impl<S: KeyValueStore, T: 'static + AsLogicalPlan, U: 'static + AsExecutionPlan>
         }
     }
 
+    #[tracing::instrument(level = "info", skip(self, _job_id))]
     async fn try_acquire_job(&self, _job_id: &str) -> Result<Option<ExecutionGraph>> {
         Err(BallistaError::NotImplemented(
             "Work stealing is not currently implemented".to_string(),
         ))
     }
 
+    #[tracing::instrument(level = "info", skip(self))]
     async fn job_state_events(&self) -> Result<JobStateEventStream> {
         let watch = self
             .store
@@ -675,6 +700,7 @@ impl<S: KeyValueStore, T: 'static + AsLogicalPlan, U: 'static + AsExecutionPlan>
         Ok(stream)
     }
 
+    #[tracing::instrument(level = "info", skip(self, session_id))]
     async fn get_session(&self, session_id: &str) -> Result<Arc<SessionContext>> {
         let value = self.store.get(Keyspace::Sessions, session_id).await?;
 
@@ -689,6 +715,7 @@ impl<S: KeyValueStore, T: 'static + AsLogicalPlan, U: 'static + AsExecutionPlan>
         Ok(create_datafusion_context(&config, self.session_builder))
     }
 
+    #[tracing::instrument(level = "info", skip(self, config))]
     async fn create_session(
         &self,
         config: &BallistaConfig,
@@ -717,6 +744,7 @@ impl<S: KeyValueStore, T: 'static + AsLogicalPlan, U: 'static + AsExecutionPlan>
         Ok(session)
     }
 
+    #[tracing::instrument(level = "info", skip(self, session_id, config))]
     async fn update_session(
         &self,
         session_id: &str,
@@ -743,6 +771,7 @@ impl<S: KeyValueStore, T: 'static + AsLogicalPlan, U: 'static + AsExecutionPlan>
         Ok(create_datafusion_context(config, self.session_builder))
     }
 
+    #[tracing::instrument(level = "info", skip(self, session_id))]
     async fn remove_session(
         &self,
         session_id: &str,
@@ -755,6 +784,7 @@ impl<S: KeyValueStore, T: 'static + AsLogicalPlan, U: 'static + AsExecutionPlan>
     }
 }
 
+#[tracing::instrument(level = "info", skip(lock, op))]
 async fn with_lock<Out, F: Future<Output = Out>>(mut lock: Box<dyn Lock>, op: F) -> Out {
     let result = op.await;
     lock.unlock().await;
@@ -799,6 +829,7 @@ mod test {
         Ok(())
     }
 
+    #[tracing::instrument(level = "info", skip())]
     #[cfg(feature = "sled")]
     fn make_sled_state() -> Result<KeyValueState<SledClient>> {
         Ok(KeyValueState::new(

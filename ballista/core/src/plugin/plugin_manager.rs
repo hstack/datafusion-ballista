@@ -32,6 +32,7 @@ use once_cell::sync::OnceCell;
 /// So fn global_plugin_manager return Arc<Mutex<GlobalPluginManager>>. In this way, users can load the required library through the load method of GlobalPluginManager when needed
 static INSTANCE: OnceCell<Arc<Mutex<GlobalPluginManager>>> = OnceCell::new();
 
+#[tracing::instrument(level = "info", skip(plugin_path))]
 /// global_plugin_manager
 pub fn global_plugin_manager(
     plugin_path: &str,
@@ -54,6 +55,7 @@ pub struct GlobalPluginManager {
 }
 
 impl GlobalPluginManager {
+    #[tracing::instrument(level = "info", skip(self, plugin_path))]
     /// # Safety
     /// find plugin file from `plugin_path` and load it .
     unsafe fn load(&mut self, plugin_path: &str) -> Result<()> {
@@ -111,6 +113,7 @@ impl GlobalPluginManager {
         Ok(())
     }
 
+    #[tracing::instrument(level = "info", skip(self, plugin_path))]
     /// get all plugin file in the dir
     fn get_all_plugin_files(&self, plugin_path: &str) -> io::Result<Vec<DirEntry>> {
         let mut plugin_files = Vec::new();

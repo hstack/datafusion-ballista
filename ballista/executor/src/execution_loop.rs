@@ -46,6 +46,7 @@ use std::time::{SystemTime, UNIX_EPOCH};
 use std::{sync::Arc, time::Duration};
 use tonic::transport::Channel;
 
+#[tracing::instrument(level = "info", skip(scheduler, executor, codec))]
 pub async fn poll_loop<T: 'static + AsLogicalPlan, U: 'static + AsExecutionPlan>(
     mut scheduler: SchedulerGrpcClient<Channel>,
     executor: Arc<Executor>,
@@ -132,6 +133,7 @@ pub async fn poll_loop<T: 'static + AsLogicalPlan, U: 'static + AsExecutionPlan>
     }
 }
 
+#[tracing::instrument(level = "info", skip(any))]
 /// Tries to get meaningful description from panic-error.
 pub(crate) fn any_to_string(any: &Box<dyn Any + Send>) -> String {
     if let Some(s) = any.downcast_ref::<&str>() {
@@ -145,6 +147,7 @@ pub(crate) fn any_to_string(any: &Box<dyn Any + Send>) -> String {
     }
 }
 
+#[tracing::instrument(level = "info", skip(executor, permit, task_status_sender, task, codec, dedicated_executor))]
 async fn run_received_task<T: 'static + AsLogicalPlan, U: 'static + AsExecutionPlan>(
     executor: Arc<Executor>,
     permit: OwnedSemaphorePermit,
@@ -282,6 +285,7 @@ async fn run_received_task<T: 'static + AsLogicalPlan, U: 'static + AsExecutionP
     Ok(())
 }
 
+#[tracing::instrument(level = "info", skip(task_status_receiver))]
 async fn sample_tasks_status(
     task_status_receiver: &mut Receiver<TaskStatus>,
 ) -> Vec<TaskStatus> {

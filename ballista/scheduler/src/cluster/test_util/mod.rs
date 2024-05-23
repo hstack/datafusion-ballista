@@ -33,6 +33,7 @@ pub struct JobStateTest<S: JobState> {
 }
 
 impl<S: JobState> JobStateTest<S> {
+    #[tracing::instrument(level = "info", skip(state))]
     pub async fn new(state: S) -> Result<Self> {
         let events = Arc::new(RwLock::new(vec![]));
 
@@ -52,11 +53,13 @@ impl<S: JobState> JobStateTest<S> {
         })
     }
 
+    #[tracing::instrument(level = "info", skip(self, job_id))]
     pub fn queue_job(self, job_id: &str) -> Result<Self> {
         self.state.accept_job(job_id, "", timestamp_millis())?;
         Ok(self)
     }
 
+    #[tracing::instrument(level = "info", skip(self, job_id))]
     pub async fn fail_planning(self, job_id: &str) -> Result<Self> {
         self.state
             .fail_unscheduled_job(job_id, "failed planning".to_string())
@@ -64,6 +67,7 @@ impl<S: JobState> JobStateTest<S> {
         Ok(self)
     }
 
+    #[tracing::instrument(level = "info", skip(self, job_id))]
     pub async fn assert_queued(self, job_id: &str) -> Result<Self> {
         let status = self.state.get_job_status(job_id).await?;
 
@@ -81,6 +85,7 @@ impl<S: JobState> JobStateTest<S> {
         Ok(self)
     }
 
+    #[tracing::instrument(level = "info", skip(self, graph))]
     pub async fn submit_job(self, graph: &ExecutionGraph) -> Result<Self> {
         self.state
             .submit_job(graph.job_id().to_string(), graph)
@@ -88,6 +93,7 @@ impl<S: JobState> JobStateTest<S> {
         Ok(self)
     }
 
+    #[tracing::instrument(level = "info", skip(self, job_id))]
     pub async fn assert_job_running(self, job_id: &str) -> Result<Self> {
         let status = self.state.get_job_status(job_id).await?;
 
@@ -105,11 +111,13 @@ impl<S: JobState> JobStateTest<S> {
         Ok(self)
     }
 
+    #[tracing::instrument(level = "info", skip(self, graph))]
     pub async fn update_job(self, graph: &ExecutionGraph) -> Result<Self> {
         self.state.save_job(graph.job_id(), graph).await?;
         Ok(self)
     }
 
+    #[tracing::instrument(level = "info", skip(self, job_id))]
     pub async fn assert_job_failed(self, job_id: &str) -> Result<Self> {
         let status = self.state.get_job_status(job_id).await?;
 
@@ -127,6 +135,7 @@ impl<S: JobState> JobStateTest<S> {
         Ok(self)
     }
 
+    #[tracing::instrument(level = "info", skip(self, job_id))]
     pub async fn assert_job_successful(self, job_id: &str) -> Result<Self> {
         let status = self.state.get_job_status(job_id).await?;
 
@@ -143,6 +152,7 @@ impl<S: JobState> JobStateTest<S> {
         Ok(self)
     }
 
+    #[tracing::instrument(level = "info", skip(self, event))]
     pub async fn assert_event(self, event: JobStateEvent) -> Result<Self> {
         let events = self.events.clone();
         let found = await_condition(Duration::from_millis(50), 10, || async {
@@ -158,6 +168,7 @@ impl<S: JobState> JobStateTest<S> {
     }
 }
 
+#[tracing::instrument(level = "info", skip(state, graph))]
 pub async fn test_job_lifecycle<S: JobState>(
     state: S,
     mut graph: ExecutionGraph,
@@ -186,6 +197,7 @@ pub async fn test_job_lifecycle<S: JobState>(
     Ok(())
 }
 
+#[tracing::instrument(level = "info", skip(state, graph))]
 pub async fn test_job_planning_failure<S: JobState>(
     state: S,
     graph: ExecutionGraph,
@@ -203,6 +215,7 @@ pub async fn test_job_planning_failure<S: JobState>(
     Ok(())
 }
 
+#[tracing::instrument(level = "info", skip(graph))]
 fn drain_tasks(graph: &mut ExecutionGraph) -> Result<()> {
     let executor = mock_executor("executor-id1".to_string());
     while let Some(task) = graph.pop_next_task(&executor.id)? {

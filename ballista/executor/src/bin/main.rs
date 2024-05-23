@@ -40,6 +40,7 @@ mod config {
 #[global_allocator]
 static GLOBAL: mimalloc::MiMalloc = mimalloc::MiMalloc;
 
+#[tracing::instrument(level = "info", skip())]
 #[tokio::main]
 async fn main() -> Result<()> {
     // parse command-line arguments

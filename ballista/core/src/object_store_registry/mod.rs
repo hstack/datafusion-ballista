@@ -36,6 +36,7 @@ use std::sync::Arc;
 use object_store::http::HttpBuilder;
 use url::Url;
 
+#[tracing::instrument(level = "info", skip(config))]
 /// Get a RuntimeConfig with specific ObjectStoreRegistry
 pub fn with_object_store_registry(config: RuntimeConfig) -> RuntimeConfig {
     let registry = Arc::new(BallistaObjectStoreRegistry::default());
@@ -49,10 +50,12 @@ pub struct BallistaObjectStoreRegistry {
 }
 
 impl BallistaObjectStoreRegistry {
+    #[tracing::instrument(level = "info", skip())]
     pub fn new() -> Self {
         Default::default()
     }
 
+    #[tracing::instrument(level = "info", skip(self, url))]
     /// Find a suitable object store based on its url and enabled features if possible
     fn get_feature_store(
         &self,
@@ -145,6 +148,7 @@ impl BallistaObjectStoreRegistry {
 }
 
 impl ObjectStoreRegistry for BallistaObjectStoreRegistry {
+    #[tracing::instrument(level = "info", skip(self, url, store))]
     fn register_store(
         &self,
         url: &Url,
@@ -153,6 +157,7 @@ impl ObjectStoreRegistry for BallistaObjectStoreRegistry {
         self.inner.register_store(url, store)
     }
 
+    #[tracing::instrument(level = "info", skip(self, url))]
     fn get_store(&self, url: &Url) -> datafusion::error::Result<Arc<dyn ObjectStore>> {
         self.inner.get_store(url).or_else(|_| {
             let store = self.get_feature_store(url)?;

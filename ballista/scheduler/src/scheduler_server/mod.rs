@@ -67,6 +67,7 @@ pub struct SchedulerServer<T: 'static + AsLogicalPlan, U: 'static + AsExecutionP
 }
 
 impl<T: 'static + AsLogicalPlan, U: 'static + AsExecutionPlan> SchedulerServer<T, U> {
+    #[tracing::instrument(level = "info", skip(scheduler_name, cluster, codec, config, metrics_collector))]
     pub fn new(
         scheduler_name: String,
         cluster: BallistaCluster,
@@ -101,6 +102,7 @@ impl<T: 'static + AsLogicalPlan, U: 'static + AsExecutionPlan> SchedulerServer<T
         }
     }
 
+    #[tracing::instrument(level = "info", skip(scheduler_name, cluster, codec, config, metrics_collector, task_launcher))]
     #[allow(dead_code)]
     pub fn new_with_task_launcher(
         scheduler_name: String,
@@ -138,6 +140,7 @@ impl<T: 'static + AsLogicalPlan, U: 'static + AsExecutionPlan> SchedulerServer<T
         }
     }
 
+    #[tracing::instrument(level = "info", skip(self))]
     pub async fn init(&mut self) -> Result<()> {
         self.state.init().await?;
         self.query_stage_event_loop.start()?;
@@ -146,18 +149,22 @@ impl<T: 'static + AsLogicalPlan, U: 'static + AsExecutionPlan> SchedulerServer<T
         Ok(())
     }
 
+    #[tracing::instrument(level = "info", skip(self))]
     pub fn pending_job_number(&self) -> usize {
         self.state.task_manager.pending_job_number()
     }
 
+    #[tracing::instrument(level = "info", skip(self))]
     pub fn running_job_number(&self) -> usize {
         self.state.task_manager.running_job_number()
     }
 
+    #[tracing::instrument(level = "info", skip(self))]
     pub(crate) fn metrics_collector(&self) -> &dyn SchedulerMetricsCollector {
         self.query_stage_scheduler.metrics_collector()
     }
 
+    #[tracing::instrument(level = "info", skip(self, job_id, job_name, ctx, plan))]
     pub(crate) async fn submit_job(
         &self,
         job_id: &str,
@@ -177,6 +184,7 @@ impl<T: 'static + AsLogicalPlan, U: 'static + AsExecutionPlan> SchedulerServer<T
             .await
     }
 
+    #[tracing::instrument(level = "info", skip(self, executor_id, tasks_status))]
     /// It just send task status update event to the channel,
     /// and will not guarantee the event processing completed after return
     pub(crate) async fn update_task_status(
@@ -203,6 +211,7 @@ impl<T: 'static + AsLogicalPlan, U: 'static + AsExecutionPlan> SchedulerServer<T
             .await
     }
 
+    #[tracing::instrument(level = "info", skip(self))]
     pub(crate) async fn revive_offers(&self) -> Result<()> {
         self.query_stage_event_loop
             .get_sender()?
@@ -210,6 +219,7 @@ impl<T: 'static + AsLogicalPlan, U: 'static + AsExecutionPlan> SchedulerServer<T
             .await
     }
 
+    #[tracing::instrument(level = "info", skip(self))]
     /// Spawn an async task which periodically check the active executors' status and
     /// expire the dead executors
     fn expire_dead_executors(&self) -> Result<()> {
@@ -271,6 +281,7 @@ impl<T: 'static + AsLogicalPlan, U: 'static + AsExecutionPlan> SchedulerServer<T
         Ok(())
     }
 
+    #[tracing::instrument(level = "info", skip(executor_manager, event_sender, executor_id, reason, wait_secs))]
     pub(crate) fn remove_executor(
         executor_manager: ExecutorManager,
         event_sender: EventSender<QueryStageSchedulerEvent>,
@@ -300,6 +311,7 @@ impl<T: 'static + AsLogicalPlan, U: 'static + AsExecutionPlan> SchedulerServer<T
         });
     }
 
+    #[tracing::instrument(level = "info", skip(self, metadata))]
     async fn do_register_executor(&self, metadata: ExecutorMetadata) -> Result<()> {
         let executor_data = ExecutorData {
             executor_id: metadata.id.clone(),
@@ -323,6 +335,7 @@ impl<T: 'static + AsLogicalPlan, U: 'static + AsExecutionPlan> SchedulerServer<T
     }
 }
 
+#[tracing::instrument(level = "info", skip())]
 pub fn timestamp_secs() -> u64 {
     SystemTime::now()
         .duration_since(UNIX_EPOCH)
@@ -330,6 +343,7 @@ pub fn timestamp_secs() -> u64 {
         .as_secs()
 }
 
+#[tracing::instrument(level = "info", skip())]
 pub fn timestamp_millis() -> u64 {
     SystemTime::now()
         .duration_since(UNIX_EPOCH)
@@ -637,6 +651,7 @@ mod test {
         Ok(())
     }
 
+    #[tracing::instrument(level = "info", skip(scheduling_policy))]
     async fn test_scheduler(
         scheduling_policy: TaskSchedulingPolicy,
     ) -> Result<SchedulerServer<LogicalPlanNode, PhysicalPlanNode>> {
@@ -656,6 +671,7 @@ mod test {
         Ok(scheduler)
     }
 
+    #[tracing::instrument(level = "info", skip(num_partitions))]
     fn test_executors(num_partitions: usize) -> Vec<(ExecutorMetadata, ExecutorData)> {
         let task_slots = (num_partitions as u32 + 1) / 2;
 
@@ -693,6 +709,7 @@ mod test {
         ]
     }
 
+    #[tracing::instrument(level = "info", skip())]
     fn test_plan() -> LogicalPlan {
         let schema = Schema::new(vec![
             Field::new("id", DataType::Utf8, false),
@@ -707,6 +724,7 @@ mod test {
             .unwrap()
     }
 
+    #[tracing::instrument(level = "info", skip(partitions))]
     fn test_session(partitions: usize) -> BallistaConfig {
         BallistaConfig::builder()
             .set(

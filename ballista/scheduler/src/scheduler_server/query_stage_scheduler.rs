@@ -46,6 +46,7 @@ pub(crate) struct QueryStageScheduler<
 }
 
 impl<T: 'static + AsLogicalPlan, U: 'static + AsExecutionPlan> QueryStageScheduler<T, U> {
+    #[tracing::instrument(level = "info", skip(state, metrics_collector, config))]
     pub(crate) fn new(
         state: Arc<SchedulerState<T, U>>,
         metrics_collector: Arc<dyn SchedulerMetricsCollector>,
@@ -58,6 +59,7 @@ impl<T: 'static + AsLogicalPlan, U: 'static + AsExecutionPlan> QueryStageSchedul
         }
     }
 
+    #[tracing::instrument(level = "info", skip(self))]
     pub(crate) fn metrics_collector(&self) -> &dyn SchedulerMetricsCollector {
         self.metrics_collector.as_ref()
     }
@@ -67,14 +69,17 @@ impl<T: 'static + AsLogicalPlan, U: 'static + AsExecutionPlan> QueryStageSchedul
 impl<T: 'static + AsLogicalPlan, U: 'static + AsExecutionPlan>
     EventAction<QueryStageSchedulerEvent> for QueryStageScheduler<T, U>
 {
+    #[tracing::instrument(level = "info", skip(self))]
     fn on_start(&self) {
         info!("Starting QueryStageScheduler");
     }
 
+    #[tracing::instrument(level = "info", skip(self))]
     fn on_stop(&self) {
         info!("Stopping QueryStageScheduler")
     }
 
+    #[tracing::instrument(level = "info", skip(self, event, tx_event, _rx_event))]
     async fn on_receive(
         &self,
         event: QueryStageSchedulerEvent,
@@ -342,6 +347,7 @@ impl<T: 'static + AsLogicalPlan, U: 'static + AsExecutionPlan>
         Ok(())
     }
 
+    #[tracing::instrument(level = "info", skip(self, error))]
     fn on_error(&self, error: BallistaError) {
         error!("Error received by QueryStageScheduler: {:?}", error);
     }
@@ -422,6 +428,7 @@ mod tests {
         Ok(())
     }
 
+    #[tracing::instrument(level = "info", skip(partitions))]
     fn test_plan(partitions: usize) -> LogicalPlan {
         let schema = Schema::new(vec![
             Field::new("id", DataType::Utf8, false),

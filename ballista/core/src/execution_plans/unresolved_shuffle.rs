@@ -43,6 +43,7 @@ pub struct UnresolvedShuffleExec {
 }
 
 impl UnresolvedShuffleExec {
+    #[tracing::instrument(level = "info", skip(stage_id, schema, output_partition_count))]
     /// Create a new UnresolvedShuffleExec
     pub fn new(
         stage_id: usize,
@@ -58,6 +59,7 @@ impl UnresolvedShuffleExec {
         }
     }
 
+    #[tracing::instrument(level = "info", skip(schema, output_partition_count))]
     /// This function creates the cache object that stores the plan properties such as schema, equivalence properties, ordering, partitioning, etc.
     fn compute_properties(
         schema: SchemaRef,
@@ -76,6 +78,7 @@ impl UnresolvedShuffleExec {
 }
 
 impl DisplayAs for UnresolvedShuffleExec {
+    #[tracing::instrument(level = "info", skip(self, t, f))]
     fn fmt_as(
         &self,
         t: DisplayFormatType,
@@ -90,20 +93,25 @@ impl DisplayAs for UnresolvedShuffleExec {
 }
 
 impl ExecutionPlan for UnresolvedShuffleExec {
+    #[tracing::instrument(level = "info", skip(self))]
     fn as_any(&self) -> &dyn Any {
         self
     }
 
+    #[tracing::instrument(level = "info", skip(self))]
     fn schema(&self) -> SchemaRef {
         self.schema.clone()
     }
 
+    #[tracing::instrument(level = "info", skip(self))]
     fn properties(&self) -> &PlanProperties { &self.cache }
 
+    #[tracing::instrument(level = "info", skip(self))]
     fn children(&self) -> Vec<Arc<dyn ExecutionPlan>> {
         vec![]
     }
 
+    #[tracing::instrument(level = "info", skip(self, _children))]
     fn with_new_children(
         self: Arc<Self>,
         _children: Vec<Arc<dyn ExecutionPlan>>,
@@ -114,6 +122,7 @@ impl ExecutionPlan for UnresolvedShuffleExec {
         ))
     }
 
+    #[tracing::instrument(level = "info", skip(self, _partition, _context))]
     fn execute(
         &self,
         _partition: usize,
@@ -124,6 +133,7 @@ impl ExecutionPlan for UnresolvedShuffleExec {
         ))
     }
 
+    #[tracing::instrument(level = "info", skip(self))]
     fn statistics(&self) -> Result<Statistics> {
         // The full statistics are computed in the `ShuffleReaderExec` node
         // that replaces this one once the previous stage is completed.

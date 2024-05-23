@@ -59,22 +59,26 @@ pub enum BallistaError {
 
 #[allow(clippy::from_over_into)]
 impl<T> Into<Result<T>> for BallistaError {
+    #[tracing::instrument(level = "info", skip(self))]
     fn into(self) -> Result<T> {
         Err(self)
     }
 }
 
+#[tracing::instrument(level = "info", skip(message))]
 pub fn ballista_error(message: &str) -> BallistaError {
     BallistaError::General(message.to_owned())
 }
 
 impl From<String> for BallistaError {
+    #[tracing::instrument(level = "info", skip(e))]
     fn from(e: String) -> Self {
         BallistaError::General(e)
     }
 }
 
 impl From<ArrowError> for BallistaError {
+    #[tracing::instrument(level = "info", skip(e))]
     fn from(e: ArrowError) -> Self {
         match e {
             ArrowError::ExternalError(e)
@@ -93,12 +97,14 @@ impl From<ArrowError> for BallistaError {
 }
 
 impl From<parser::ParserError> for BallistaError {
+    #[tracing::instrument(level = "info", skip(e))]
     fn from(e: parser::ParserError) -> Self {
         BallistaError::SqlError(e)
     }
 }
 
 impl From<DataFusionError> for BallistaError {
+    #[tracing::instrument(level = "info", skip(e))]
     fn from(e: DataFusionError) -> Self {
         match e {
             DataFusionError::ArrowError(e, _) => Self::from(e),
@@ -108,6 +114,7 @@ impl From<DataFusionError> for BallistaError {
 }
 
 impl From<io::Error> for BallistaError {
+    #[tracing::instrument(level = "info", skip(e))]
     fn from(e: io::Error) -> Self {
         BallistaError::IoError(e)
     }
@@ -144,42 +151,49 @@ impl From<io::Error> for BallistaError {
 // }
 
 impl From<tonic::transport::Error> for BallistaError {
+    #[tracing::instrument(level = "info", skip(e))]
     fn from(e: tonic::transport::Error) -> Self {
         BallistaError::TonicError(e)
     }
 }
 
 impl From<tonic::Status> for BallistaError {
+    #[tracing::instrument(level = "info", skip(e))]
     fn from(e: tonic::Status) -> Self {
         BallistaError::GrpcError(e)
     }
 }
 
 impl From<tokio::task::JoinError> for BallistaError {
+    #[tracing::instrument(level = "info", skip(e))]
     fn from(e: tokio::task::JoinError) -> Self {
         BallistaError::TokioError(e)
     }
 }
 
 impl From<datafusion_proto::logical_plan::from_proto::Error> for BallistaError {
+    #[tracing::instrument(level = "info", skip(e))]
     fn from(e: datafusion_proto::logical_plan::from_proto::Error) -> Self {
         BallistaError::General(e.to_string())
     }
 }
 
 impl From<datafusion_proto::logical_plan::to_proto::Error> for BallistaError {
+    #[tracing::instrument(level = "info", skip(e))]
     fn from(e: datafusion_proto::logical_plan::to_proto::Error) -> Self {
         BallistaError::General(e.to_string())
     }
 }
 
 impl From<futures::future::Aborted> for BallistaError {
+    #[tracing::instrument(level = "info", skip())]
     fn from(_: Aborted) -> Self {
         BallistaError::Cancelled
     }
 }
 
 impl Display for BallistaError {
+    #[tracing::instrument(level = "info", skip(self, f))]
     fn fmt(&self, f: &mut Formatter) -> std::fmt::Result {
         match self {
             BallistaError::NotImplemented(ref desc) => {
@@ -226,6 +240,7 @@ impl Display for BallistaError {
 }
 
 impl From<BallistaError> for FailedTask {
+    #[tracing::instrument(level = "info", skip(e))]
     fn from(e: BallistaError) -> Self {
         match e {
             BallistaError::FetchFailed(

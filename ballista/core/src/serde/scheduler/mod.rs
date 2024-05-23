@@ -58,6 +58,7 @@ pub struct PartitionId {
 }
 
 impl PartitionId {
+    #[tracing::instrument(level = "info", skip(job_id, stage_id, partition_id))]
     pub fn new(job_id: &str, stage_id: usize, partition_id: usize) -> Self {
         Self {
             job_id: job_id.to_string(),
@@ -114,6 +115,7 @@ pub struct PartitionStats {
 }
 
 impl fmt::Display for PartitionStats {
+    #[tracing::instrument(level = "info", skip(self, f))]
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(
             f,
@@ -124,6 +126,7 @@ impl fmt::Display for PartitionStats {
 }
 
 impl PartitionStats {
+    #[tracing::instrument(level = "info", skip(num_rows, num_batches, num_bytes))]
     pub fn new(
         num_rows: Option<u64>,
         num_batches: Option<u64>,
@@ -136,6 +139,7 @@ impl PartitionStats {
         }
     }
 
+    #[tracing::instrument(level = "info", skip(self))]
     pub fn arrow_struct_repr(self) -> Field {
         Field::new(
             "partition_stats",
@@ -144,6 +148,7 @@ impl PartitionStats {
         )
     }
 
+    #[tracing::instrument(level = "info", skip(self))]
     pub fn arrow_struct_fields(self) -> Vec<Field> {
         vec![
             Field::new("num_rows", DataType::UInt64, false),
@@ -152,6 +157,7 @@ impl PartitionStats {
         ]
     }
 
+    #[tracing::instrument(level = "info", skip(self))]
     pub fn to_arrow_arrayref(self) -> Result<Arc<StructArray>, BallistaError> {
         let mut field_builders = Vec::new();
 
@@ -182,6 +188,7 @@ impl PartitionStats {
         Ok(Arc::new(struct_builder.finish()))
     }
 
+    #[tracing::instrument(level = "info", skip(struct_array))]
     pub fn from_arrow_struct_array(struct_array: &StructArray) -> PartitionStats {
         let num_rows = struct_array
             .column_by_name("num_rows")
@@ -229,6 +236,7 @@ pub struct ExecutePartition {
 }
 
 impl ExecutePartition {
+    #[tracing::instrument(level = "info", skip(job_id, stage_id, partition_id, plan, shuffle_locations, output_partitioning))]
     pub fn new(
         job_id: String,
         stage_id: usize,
@@ -247,6 +255,7 @@ impl ExecutePartition {
         }
     }
 
+    #[tracing::instrument(level = "info", skip(self))]
     pub fn key(&self) -> String {
         format!("{}.{}.{:?}", self.job_id, self.stage_id, self.partition_id)
     }
@@ -260,6 +269,7 @@ pub struct ExecutePartitionResult {
 }
 
 impl ExecutePartitionResult {
+    #[tracing::instrument(level = "info", skip(path, stats))]
     pub fn new(path: &str, stats: PartitionStats) -> Self {
         Self {
             path: path.to_owned(),
@@ -267,10 +277,12 @@ impl ExecutePartitionResult {
         }
     }
 
+    #[tracing::instrument(level = "info", skip(self))]
     pub fn path(&self) -> &str {
         &self.path
     }
 
+    #[tracing::instrument(level = "info", skip(self))]
     pub fn statistics(&self) -> &PartitionStats {
         &self.stats
     }
@@ -299,10 +311,12 @@ pub struct SimpleFunctionRegistry {
 }
 
 impl FunctionRegistry for SimpleFunctionRegistry {
+    #[tracing::instrument(level = "info", skip(self))]
     fn udfs(&self) -> HashSet<String> {
         self.scalar_functions.keys().cloned().collect()
     }
 
+    #[tracing::instrument(level = "info", skip(self, name))]
     fn udf(&self, name: &str) -> datafusion::common::Result<Arc<ScalarUDF>> {
         let result = self.scalar_functions.get(name);
 
@@ -313,6 +327,7 @@ impl FunctionRegistry for SimpleFunctionRegistry {
         })
     }
 
+    #[tracing::instrument(level = "info", skip(self, name))]
     fn udaf(&self, name: &str) -> datafusion::common::Result<Arc<AggregateUDF>> {
         let result = self.aggregate_functions.get(name);
 
@@ -323,6 +338,7 @@ impl FunctionRegistry for SimpleFunctionRegistry {
         })
     }
 
+    #[tracing::instrument(level = "info", skip(self, name))]
     fn udwf(&self, name: &str) -> datafusion::common::Result<Arc<WindowUDF>> {
         let result = self.window_functions.get(name);
 

@@ -58,6 +58,7 @@ const IO_RETRIES_TIMES: u8 = 3;
 const IO_RETRY_WAIT_TIME_MS: u64 = 3000;
 
 impl BallistaClient {
+    #[tracing::instrument(level = "info", skip(host, port))]
     /// Create a new BallistaClient to connect to the executor listening on the specified
     /// host and port
     pub async fn try_new(host: &str, port: u16) -> Result<Self> {
@@ -77,6 +78,7 @@ impl BallistaClient {
         Ok(Self { flight_client })
     }
 
+    #[tracing::instrument(level = "info", skip(self, executor_id, partition_id, path, host, port))]
     /// Fetch a partition from an executor
     pub async fn fetch_partition(
         &mut self,
@@ -108,6 +110,7 @@ impl BallistaClient {
             })
     }
 
+    #[tracing::instrument(level = "info", skip(self, action))]
     /// Execute an action and retrieve the results
     pub async fn execute_action(
         &mut self,
@@ -194,6 +197,7 @@ struct FlightDataStream {
 }
 
 impl FlightDataStream {
+    #[tracing::instrument(level = "info", skip(stream, schema))]
     pub fn new(stream: Streaming<FlightData>, schema: SchemaRef) -> Self {
         Self {
             stream,
@@ -206,6 +210,7 @@ impl FlightDataStream {
 impl Stream for FlightDataStream {
     type Item = datafusion::error::Result<RecordBatch>;
 
+    #[tracing::instrument(level = "info", skip(self, cx))]
     fn poll_next(
         mut self: std::pin::Pin<&mut Self>,
         cx: &mut Context<'_>,
@@ -230,6 +235,7 @@ impl Stream for FlightDataStream {
 }
 
 impl RecordBatchStream for FlightDataStream {
+    #[tracing::instrument(level = "info", skip(self))]
     fn schema(&self) -> SchemaRef {
         self.schema.clone()
     }

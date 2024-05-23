@@ -40,6 +40,7 @@ pub struct EtcdClient {
 }
 
 impl EtcdClient {
+    #[tracing::instrument(level = "info", skip(namespace, etcd))]
     pub fn new(namespace: String, etcd: etcd_client::Client) -> Self {
         Self { namespace, etcd }
     }
@@ -47,6 +48,7 @@ impl EtcdClient {
 
 #[async_trait]
 impl KeyValueStore for EtcdClient {
+    #[tracing::instrument(level = "info", skip(self, keyspace, key))]
     async fn get(&self, keyspace: Keyspace, key: &str) -> Result<Vec<u8>> {
         let key = format!("/{}/{:?}/{}", self.namespace, keyspace, key);
 
@@ -62,6 +64,7 @@ impl KeyValueStore for EtcdClient {
             .unwrap_or_default())
     }
 
+    #[tracing::instrument(level = "info", skip(self, keyspace, prefix))]
     async fn get_from_prefix(
         &self,
         keyspace: Keyspace,
@@ -81,6 +84,7 @@ impl KeyValueStore for EtcdClient {
             .collect())
     }
 
+    #[tracing::instrument(level = "info", skip(self, keyspace, limit))]
     async fn scan(
         &self,
         keyspace: Keyspace,
@@ -106,6 +110,7 @@ impl KeyValueStore for EtcdClient {
             .collect())
     }
 
+    #[tracing::instrument(level = "info", skip(self, keyspace))]
     async fn scan_keys(&self, keyspace: Keyspace) -> Result<HashSet<String>> {
         let prefix = format!("/{}/{:?}/", self.namespace, keyspace);
 
@@ -129,6 +134,7 @@ impl KeyValueStore for EtcdClient {
             .collect())
     }
 
+    #[tracing::instrument(level = "info", skip(self, keyspace, key, value))]
     async fn put(&self, keyspace: Keyspace, key: String, value: Vec<u8>) -> Result<()> {
         let key = format!("/{}/{:?}/{}", self.namespace, keyspace, key);
 
@@ -142,6 +148,7 @@ impl KeyValueStore for EtcdClient {
             .map(|_| ())
     }
 
+    #[tracing::instrument(level = "info", skip(self, ops))]
     /// Apply multiple operations in a single transaction.
     async fn apply_txn(&self, ops: Vec<(Operation, Keyspace, String)>) -> Result<()> {
         let mut etcd = self.etcd.clone();
@@ -166,6 +173,7 @@ impl KeyValueStore for EtcdClient {
             .map(|_| ())
     }
 
+    #[tracing::instrument(level = "info", skip(self, from_keyspace, to_keyspace, key))]
     async fn mv(
         &self,
         from_keyspace: Keyspace,
@@ -200,6 +208,7 @@ impl KeyValueStore for EtcdClient {
         Ok(())
     }
 
+    #[tracing::instrument(level = "info", skip(self, keyspace, key))]
     async fn lock(&self, keyspace: Keyspace, key: &str) -> Result<Box<dyn Lock>> {
         let start = Instant::now();
         let mut etcd = self.etcd.clone();
@@ -235,6 +244,7 @@ impl KeyValueStore for EtcdClient {
         Ok(Box::new(EtcdLockGuard { etcd, lock }))
     }
 
+    #[tracing::instrument(level = "info", skip(self, keyspace, prefix))]
     async fn watch(&self, keyspace: Keyspace, prefix: String) -> Result<Box<dyn Watch>> {
         let prefix = format!("/{}/{:?}/{}", self.namespace, keyspace, prefix);
 
@@ -251,6 +261,7 @@ impl KeyValueStore for EtcdClient {
         }))
     }
 
+    #[tracing::instrument(level = "info", skip(self, keyspace, key))]
     async fn delete(&self, keyspace: Keyspace, key: &str) -> Result<()> {
         let key = format!("/{}/{:?}/{}", self.namespace, keyspace, key);
 
@@ -273,6 +284,7 @@ struct EtcdWatch {
 
 #[tonic::async_trait]
 impl Watch for EtcdWatch {
+    #[tracing::instrument(level = "info", skip(self))]
     async fn cancel(&mut self) -> Result<()> {
         self.watcher.cancel().await.map_err(|e| {
             warn!("etcd watch cancel failed: {}", e);
@@ -284,6 +296,7 @@ impl Watch for EtcdWatch {
 impl Stream for EtcdWatch {
     type Item = WatchEvent;
 
+    #[tracing::instrument(level = "info", skip(self, cx))]
     fn poll_next(
         self: std::pin::Pin<&mut Self>,
         cx: &mut std::task::Context<'_>,
@@ -327,6 +340,7 @@ impl Stream for EtcdWatch {
         }
     }
 
+    #[tracing::instrument(level = "info", skip(self))]
     fn size_hint(&self) -> (usize, Option<usize>) {
         self.stream.size_hint()
     }
@@ -340,6 +354,7 @@ struct EtcdLockGuard {
 // Cannot use Drop because we need this to be async
 #[tonic::async_trait]
 impl Lock for EtcdLockGuard {
+    #[tracing::instrument(level = "info", skip(self))]
     async fn unlock(&mut self) {
         self.etcd.unlock(self.lock.key()).await.unwrap();
     }

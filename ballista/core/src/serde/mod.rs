@@ -57,10 +57,12 @@ pub mod generated;
 pub mod scheduler;
 
 impl ProstMessageExt for protobuf::Action {
+    #[tracing::instrument(level = "info", skip())]
     fn type_url() -> &'static str {
         "type.googleapis.com/arrow.flight.protocol.sql.Action"
     }
 
+    #[tracing::instrument(level = "info", skip(self))]
     fn as_any(&self) -> arrow_flight::sql::Any {
         arrow_flight::sql::Any {
             type_url: protobuf::Action::type_url().to_string(),
@@ -69,6 +71,7 @@ impl ProstMessageExt for protobuf::Action {
     }
 }
 
+#[tracing::instrument(level = "info", skip(bytes))]
 pub fn decode_protobuf(bytes: &[u8]) -> Result<BallistaAction, BallistaError> {
     let mut buf = Cursor::new(bytes);
 
@@ -89,6 +92,7 @@ pub struct BallistaCodec<
 }
 
 impl Default for BallistaCodec {
+    #[tracing::instrument(level = "info", skip())]
     fn default() -> Self {
         Self {
             logical_extension_codec: Arc::new(BallistaMultiLogicalExtensionCodec::default_with_delta()),
@@ -100,6 +104,7 @@ impl Default for BallistaCodec {
 }
 
 impl<T: 'static + AsLogicalPlan, U: 'static + AsExecutionPlan> BallistaCodec<T, U> {
+    #[tracing::instrument(level = "info", skip(logical_extension_codec, physical_extension_codec))]
     pub fn new(
         logical_extension_codec: Arc<dyn LogicalExtensionCodec>,
         physical_extension_codec: Arc<dyn PhysicalExtensionCodec>,
@@ -112,10 +117,12 @@ impl<T: 'static + AsLogicalPlan, U: 'static + AsExecutionPlan> BallistaCodec<T, 
         }
     }
 
+    #[tracing::instrument(level = "info", skip(self))]
     pub fn logical_extension_codec(&self) -> &dyn LogicalExtensionCodec {
         self.logical_extension_codec.as_ref()
     }
 
+    #[tracing::instrument(level = "info", skip(self))]
     pub fn physical_extension_codec(&self) -> &dyn PhysicalExtensionCodec {
         self.physical_extension_codec.as_ref()
     }
@@ -128,12 +135,14 @@ pub struct BallistaMultiLogicalExtensionCodec {
 }
 
 impl crate::serde::BallistaMultiLogicalExtensionCodec {
+    #[tracing::instrument(level = "info", skip(vec))]
     pub fn new(vec: Vec<Arc<dyn LogicalExtensionCodec>>) -> Self {
         crate::serde::BallistaMultiLogicalExtensionCodec {
             codecs: vec,
         }
     }
 
+    #[tracing::instrument(level = "info", skip())]
     pub fn default() -> Self {
         crate::serde::BallistaMultiLogicalExtensionCodec {
             codecs: vec![
@@ -142,6 +151,7 @@ impl crate::serde::BallistaMultiLogicalExtensionCodec {
         }
     }
 
+    #[tracing::instrument(level = "info", skip())]
     pub fn default_with_delta() -> Self {
         crate::serde::BallistaMultiLogicalExtensionCodec {
             codecs: vec![
@@ -153,6 +163,7 @@ impl crate::serde::BallistaMultiLogicalExtensionCodec {
 }
 
 impl LogicalExtensionCodec for BallistaMultiLogicalExtensionCodec {
+    #[tracing::instrument(level = "info", skip(self, buf, inputs, ctx))]
     fn try_decode(&self, buf: &[u8], inputs: &[LogicalPlan], ctx: &SessionContext) -> datafusion::common::Result<Extension> {
         for codec in self.codecs.iter() {
             let possible = codec.try_decode(buf, inputs, ctx);
@@ -165,6 +176,7 @@ impl LogicalExtensionCodec for BallistaMultiLogicalExtensionCodec {
         )))
     }
 
+    #[tracing::instrument(level = "info", skip(self, node, buf))]
     fn try_encode(&self, node: &Extension, buf: &mut Vec<u8>) -> datafusion::common::Result<()> {
         for codec in self.codecs.iter() {
             let possible = codec.try_encode(node, buf);
@@ -177,6 +189,7 @@ impl LogicalExtensionCodec for BallistaMultiLogicalExtensionCodec {
         )))
     }
 
+    #[tracing::instrument(level = "info", skip(self, buf, schema, ctx))]
     fn try_decode_table_provider(&self, buf: &[u8], schema: SchemaRef, ctx: &SessionContext) -> datafusion::common::Result<Arc<dyn TableProvider>> {
         for codec in self.codecs.iter() {
             let possible = codec.try_decode_table_provider(buf, schema.clone(), ctx);
@@ -189,6 +202,7 @@ impl LogicalExtensionCodec for BallistaMultiLogicalExtensionCodec {
         )))
     }
 
+    #[tracing::instrument(level = "info", skip(self, node, buf))]
     fn try_encode_table_provider(&self, node: Arc<dyn TableProvider>, buf: &mut Vec<u8>) -> datafusion::common::Result<()> {
         for codec in self.codecs.iter() {
             let possible = codec.try_encode_table_provider(node.clone(), buf);
@@ -208,12 +222,14 @@ pub struct BallistaMultiPhysicalExtensionCodec {
 }
 
 impl BallistaMultiPhysicalExtensionCodec {
+    #[tracing::instrument(level = "info", skip(vec))]
     pub fn new(vec: Vec<Arc<dyn PhysicalExtensionCodec>>) -> Self {
         BallistaMultiPhysicalExtensionCodec {
             codecs: vec,
         }
     }
 
+    #[tracing::instrument(level = "info", skip())]
     pub fn default() -> Self {
         BallistaMultiPhysicalExtensionCodec {
             codecs: vec![
@@ -222,6 +238,7 @@ impl BallistaMultiPhysicalExtensionCodec {
         }
     }
 
+    #[tracing::instrument(level = "info", skip())]
     pub fn default_with_delta() -> Self {
         BallistaMultiPhysicalExtensionCodec {
             codecs: vec![
@@ -233,6 +250,7 @@ impl BallistaMultiPhysicalExtensionCodec {
 }
 
 impl PhysicalExtensionCodec for BallistaMultiPhysicalExtensionCodec {
+    #[tracing::instrument(level = "info", skip(self, buf, inputs, registry))]
     fn try_decode(&self, buf: &[u8], inputs: &[Arc<dyn ExecutionPlan>], registry: &dyn FunctionRegistry) -> datafusion::common::Result<Arc<dyn ExecutionPlan>> {
         for codec in self.codecs.iter() {
             let possible = codec.try_decode(buf, inputs, registry);
@@ -245,6 +263,7 @@ impl PhysicalExtensionCodec for BallistaMultiPhysicalExtensionCodec {
         )))
     }
 
+    #[tracing::instrument(level = "info", skip(self, node, buf))]
     fn try_encode(&self, node: Arc<dyn ExecutionPlan>, buf: &mut Vec<u8>) -> Result<(), DataFusionError> {
         for codec in self.codecs.iter() {
             let possible = codec.try_encode(node.clone(), buf);
@@ -262,6 +281,7 @@ impl PhysicalExtensionCodec for BallistaMultiPhysicalExtensionCodec {
 pub struct BallistaPhysicalExtensionCodec {}
 
 impl PhysicalExtensionCodec for BallistaPhysicalExtensionCodec {
+    #[tracing::instrument(level = "info", skip(self, buf, inputs, registry))]
     fn try_decode(
         &self,
         buf: &[u8],
@@ -336,6 +356,7 @@ impl PhysicalExtensionCodec for BallistaPhysicalExtensionCodec {
         }
     }
 
+    #[tracing::instrument(level = "info", skip(self, node, buf))]
     fn try_encode(
         &self,
         node: Arc<dyn ExecutionPlan>,

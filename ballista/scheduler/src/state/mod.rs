@@ -51,6 +51,7 @@ pub mod executor_manager;
 pub mod session_manager;
 pub mod task_manager;
 
+#[tracing::instrument(level = "info", skip(bytes))]
 pub fn decode_protobuf<T: Message + Default>(bytes: &[u8]) -> Result<T> {
     T::decode(bytes).map_err(|e| {
         BallistaError::Internal(format!(
@@ -61,6 +62,7 @@ pub fn decode_protobuf<T: Message + Default>(bytes: &[u8]) -> Result<T> {
     })
 }
 
+#[tracing::instrument(level = "info", skip(bytes))]
 pub fn decode_into<T: Message + Default + Into<U>, U>(bytes: &[u8]) -> Result<U> {
     T::decode(bytes)
         .map_err(|e| {
@@ -73,6 +75,7 @@ pub fn decode_into<T: Message + Default + Into<U>, U>(bytes: &[u8]) -> Result<U>
         .map(|t| t.into())
 }
 
+#[tracing::instrument(level = "info", skip(msg))]
 pub fn encode_protobuf<T: Message + Default>(msg: &T) -> Result<Vec<u8>> {
     let mut value: Vec<u8> = Vec::with_capacity(msg.encoded_len());
     msg.encode(&mut value).map_err(|e| {
@@ -95,6 +98,7 @@ pub struct SchedulerState<T: 'static + AsLogicalPlan, U: 'static + AsExecutionPl
 }
 
 impl<T: 'static + AsLogicalPlan, U: 'static + AsExecutionPlan> SchedulerState<T, U> {
+    #[tracing::instrument(level = "info", skip(cluster, codec, scheduler_name, config))]
     pub fn new(
         cluster: BallistaCluster,
         codec: BallistaCodec<T, U>,
@@ -117,6 +121,7 @@ impl<T: 'static + AsLogicalPlan, U: 'static + AsExecutionPlan> SchedulerState<T,
         }
     }
 
+    #[tracing::instrument(level = "info", skip(cluster, codec))]
     #[cfg(test)]
     pub fn new_with_default_scheduler_name(
         cluster: BallistaCluster,
@@ -126,6 +131,7 @@ impl<T: 'static + AsLogicalPlan, U: 'static + AsExecutionPlan> SchedulerState<T,
         SchedulerState::new(cluster, codec, "localhost:50050".to_owned(), config)
     }
 
+    #[tracing::instrument(level = "info", skip(cluster, codec, scheduler_name, config, dispatcher))]
     #[allow(dead_code)]
     pub(crate) fn new_with_task_launcher(
         cluster: BallistaCluster,
@@ -151,10 +157,12 @@ impl<T: 'static + AsLogicalPlan, U: 'static + AsExecutionPlan> SchedulerState<T,
         }
     }
 
+    #[tracing::instrument(level = "info", skip(self))]
     pub async fn init(&self) -> Result<()> {
         self.executor_manager.init().await
     }
 
+    #[tracing::instrument(level = "info", skip(self, sender))]
     pub(crate) async fn revive_offers(
         &self,
         sender: EventSender<QueryStageSchedulerEvent>,
@@ -202,6 +210,7 @@ impl<T: 'static + AsLogicalPlan, U: 'static + AsExecutionPlan> SchedulerState<T,
         Ok(())
     }
 
+    #[tracing::instrument(level = "info", skip(self, executor_id, reason))]
     /// Remove an executor.
     /// 1. The executor related info will be removed from [`ExecutorManager`]
     /// 2. All of affected running execution graph will be rolled backed
@@ -238,6 +247,7 @@ impl<T: 'static + AsLogicalPlan, U: 'static + AsExecutionPlan> SchedulerState<T,
         }
     }
 
+    #[tracing::instrument(level = "info", skip(self, bound_tasks))]
     /// Given a vector of bound tasks,
     /// 1. Firstly reorganize according to: executor -> job stage -> tasks;
     /// 2. Then launch the task set vector to each executor one by one.
@@ -331,6 +341,7 @@ impl<T: 'static + AsLogicalPlan, U: 'static + AsExecutionPlan> SchedulerState<T,
             .collect::<Vec<ExecutorSlot>>())
     }
 
+    #[tracing::instrument(level = "info", skip(self, executor_id, tasks_status))]
     pub(crate) async fn update_task_statuses(
         &self,
         executor_id: &str,
@@ -346,6 +357,7 @@ impl<T: 'static + AsLogicalPlan, U: 'static + AsExecutionPlan> SchedulerState<T,
             .await
     }
 
+    #[tracing::instrument(level = "info", skip(self, job_id, job_name, session_ctx, plan, queued_at))]
     pub(crate) async fn submit_job(
         &self,
         job_id: &str,
@@ -419,6 +431,7 @@ impl<T: 'static + AsLogicalPlan, U: 'static + AsExecutionPlan> SchedulerState<T,
         Ok(())
     }
 
+    #[tracing::instrument(level = "info", skip(self, job_id))]
     /// Spawn a delayed future to clean up job data on both Scheduler and Executors
     pub(crate) fn clean_up_successful_job(&self, job_id: String) {
         self.executor_manager.clean_up_job_data_delayed(
@@ -431,6 +444,7 @@ impl<T: 'static + AsLogicalPlan, U: 'static + AsExecutionPlan> SchedulerState<T,
         );
     }
 
+    #[tracing::instrument(level = "info", skip(self, job_id))]
     /// Spawn a delayed future to clean up job data on both Scheduler and Executors
     pub(crate) fn clean_up_failed_job(&self, job_id: String) {
         self.executor_manager.clean_up_job_data(job_id.clone());

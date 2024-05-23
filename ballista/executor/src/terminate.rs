@@ -24,6 +24,7 @@ use tokio::signal::windows::{self as os_impl};
 
 use std::io;
 
+#[tracing::instrument(level = "info", skip())]
 pub async fn sig_term() -> io::Result<()> {
     #[cfg(unix)]
     os_impl::signal(SignalKind::terminate())?.recv().await;

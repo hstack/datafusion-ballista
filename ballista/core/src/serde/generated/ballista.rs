@@ -1187,6 +1187,7 @@ pub mod scheduler_grpc_client {
         inner: tonic::client::Grpc<T>,
     }
     impl SchedulerGrpcClient<tonic::transport::Channel> {
+        #[tracing::instrument(level = "info", skip(dst))]
         /// Attempt to create a new client by connecting to a given endpoint.
         pub async fn connect<D>(dst: D) -> Result<Self, tonic::transport::Error>
         where
@@ -1204,14 +1205,17 @@ pub mod scheduler_grpc_client {
         T::ResponseBody: Body<Data = Bytes> + Send + 'static,
         <T::ResponseBody as Body>::Error: Into<StdError> + Send,
     {
+        #[tracing::instrument(level = "info", skip(inner))]
         pub fn new(inner: T) -> Self {
             let inner = tonic::client::Grpc::new(inner);
             Self { inner }
         }
+        #[tracing::instrument(level = "info", skip(inner, origin))]
         pub fn with_origin(inner: T, origin: Uri) -> Self {
             let inner = tonic::client::Grpc::with_origin(inner, origin);
             Self { inner }
         }
+        #[tracing::instrument(level = "info", skip(inner, interceptor))]
         pub fn with_interceptor<F>(
             inner: T,
             interceptor: F,
@@ -1231,6 +1235,7 @@ pub mod scheduler_grpc_client {
         {
             SchedulerGrpcClient::new(InterceptedService::new(inner, interceptor))
         }
+        #[tracing::instrument(level = "info", skip(self, encoding))]
         /// Compress requests with the given encoding.
         ///
         /// This requires the server to support it otherwise it might respond with an
@@ -1240,12 +1245,14 @@ pub mod scheduler_grpc_client {
             self.inner = self.inner.send_compressed(encoding);
             self
         }
+        #[tracing::instrument(level = "info", skip(self, encoding))]
         /// Enable decompressing responses.
         #[must_use]
         pub fn accept_compressed(mut self, encoding: CompressionEncoding) -> Self {
             self.inner = self.inner.accept_compressed(encoding);
             self
         }
+        #[tracing::instrument(level = "info", skip(self, limit))]
         /// Limits the maximum size of a decoded message.
         ///
         /// Default: `4MB`
@@ -1254,6 +1261,7 @@ pub mod scheduler_grpc_client {
             self.inner = self.inner.max_decoding_message_size(limit);
             self
         }
+        #[tracing::instrument(level = "info", skip(self, limit))]
         /// Limits the maximum size of an encoded message.
         ///
         /// Default: `usize::MAX`
@@ -1262,6 +1270,7 @@ pub mod scheduler_grpc_client {
             self.inner = self.inner.max_encoding_message_size(limit);
             self
         }
+        #[tracing::instrument(level = "info", skip(self, request))]
         /// Executors must poll the scheduler for heartbeat and to receive tasks
         pub async fn poll_work(
             &mut self,
@@ -1285,6 +1294,7 @@ pub mod scheduler_grpc_client {
                 .insert(GrpcMethod::new("ballista.protobuf.SchedulerGrpc", "PollWork"));
             self.inner.unary(req, path, codec).await
         }
+        #[tracing::instrument(level = "info", skip(self, request))]
         pub async fn register_executor(
             &mut self,
             request: impl tonic::IntoRequest<super::RegisterExecutorParams>,
@@ -1315,6 +1325,7 @@ pub mod scheduler_grpc_client {
                 );
             self.inner.unary(req, path, codec).await
         }
+        #[tracing::instrument(level = "info", skip(self, request))]
         /// Push-based task scheduler will only leverage this interface
         /// rather than the PollWork interface to report executor states
         pub async fn heart_beat_from_executor(
@@ -1347,6 +1358,7 @@ pub mod scheduler_grpc_client {
                 );
             self.inner.unary(req, path, codec).await
         }
+        #[tracing::instrument(level = "info", skip(self, request))]
         pub async fn update_task_status(
             &mut self,
             request: impl tonic::IntoRequest<super::UpdateTaskStatusParams>,
@@ -1377,6 +1389,7 @@ pub mod scheduler_grpc_client {
                 );
             self.inner.unary(req, path, codec).await
         }
+        #[tracing::instrument(level = "info", skip(self, request))]
         pub async fn get_file_metadata(
             &mut self,
             request: impl tonic::IntoRequest<super::GetFileMetadataParams>,
@@ -1404,6 +1417,7 @@ pub mod scheduler_grpc_client {
                 );
             self.inner.unary(req, path, codec).await
         }
+        #[tracing::instrument(level = "info", skip(self, request))]
         pub async fn create_session(
             &mut self,
             request: impl tonic::IntoRequest<super::CreateSessionParams>,
@@ -1431,6 +1445,7 @@ pub mod scheduler_grpc_client {
                 );
             self.inner.unary(req, path, codec).await
         }
+        #[tracing::instrument(level = "info", skip(self, request))]
         pub async fn update_session(
             &mut self,
             request: impl tonic::IntoRequest<super::UpdateSessionParams>,
@@ -1458,6 +1473,7 @@ pub mod scheduler_grpc_client {
                 );
             self.inner.unary(req, path, codec).await
         }
+        #[tracing::instrument(level = "info", skip(self, request))]
         pub async fn remove_session(
             &mut self,
             request: impl tonic::IntoRequest<super::RemoveSessionParams>,
@@ -1485,6 +1501,7 @@ pub mod scheduler_grpc_client {
                 );
             self.inner.unary(req, path, codec).await
         }
+        #[tracing::instrument(level = "info", skip(self, request))]
         pub async fn execute_query(
             &mut self,
             request: impl tonic::IntoRequest<super::ExecuteQueryParams>,
@@ -1512,6 +1529,7 @@ pub mod scheduler_grpc_client {
                 );
             self.inner.unary(req, path, codec).await
         }
+        #[tracing::instrument(level = "info", skip(self, request))]
         pub async fn get_job_status(
             &mut self,
             request: impl tonic::IntoRequest<super::GetJobStatusParams>,
@@ -1539,6 +1557,7 @@ pub mod scheduler_grpc_client {
                 );
             self.inner.unary(req, path, codec).await
         }
+        #[tracing::instrument(level = "info", skip(self, request))]
         /// Used by Executor to tell Scheduler it is stopped.
         pub async fn executor_stopped(
             &mut self,
@@ -1567,6 +1586,7 @@ pub mod scheduler_grpc_client {
                 );
             self.inner.unary(req, path, codec).await
         }
+        #[tracing::instrument(level = "info", skip(self, request))]
         pub async fn cancel_job(
             &mut self,
             request: impl tonic::IntoRequest<super::CancelJobParams>,
@@ -1592,6 +1612,7 @@ pub mod scheduler_grpc_client {
                 .insert(GrpcMethod::new("ballista.protobuf.SchedulerGrpc", "CancelJob"));
             self.inner.unary(req, path, codec).await
         }
+        #[tracing::instrument(level = "info", skip(self, request))]
         pub async fn clean_job_data(
             &mut self,
             request: impl tonic::IntoRequest<super::CleanJobDataParams>,
@@ -1631,6 +1652,7 @@ pub mod executor_grpc_client {
         inner: tonic::client::Grpc<T>,
     }
     impl ExecutorGrpcClient<tonic::transport::Channel> {
+        #[tracing::instrument(level = "info", skip(dst))]
         /// Attempt to create a new client by connecting to a given endpoint.
         pub async fn connect<D>(dst: D) -> Result<Self, tonic::transport::Error>
         where
@@ -1648,14 +1670,17 @@ pub mod executor_grpc_client {
         T::ResponseBody: Body<Data = Bytes> + Send + 'static,
         <T::ResponseBody as Body>::Error: Into<StdError> + Send,
     {
+        #[tracing::instrument(level = "info", skip(inner))]
         pub fn new(inner: T) -> Self {
             let inner = tonic::client::Grpc::new(inner);
             Self { inner }
         }
+        #[tracing::instrument(level = "info", skip(inner, origin))]
         pub fn with_origin(inner: T, origin: Uri) -> Self {
             let inner = tonic::client::Grpc::with_origin(inner, origin);
             Self { inner }
         }
+        #[tracing::instrument(level = "info", skip(inner, interceptor))]
         pub fn with_interceptor<F>(
             inner: T,
             interceptor: F,
@@ -1675,6 +1700,7 @@ pub mod executor_grpc_client {
         {
             ExecutorGrpcClient::new(InterceptedService::new(inner, interceptor))
         }
+        #[tracing::instrument(level = "info", skip(self, encoding))]
         /// Compress requests with the given encoding.
         ///
         /// This requires the server to support it otherwise it might respond with an
@@ -1684,12 +1710,14 @@ pub mod executor_grpc_client {
             self.inner = self.inner.send_compressed(encoding);
             self
         }
+        #[tracing::instrument(level = "info", skip(self, encoding))]
         /// Enable decompressing responses.
         #[must_use]
         pub fn accept_compressed(mut self, encoding: CompressionEncoding) -> Self {
             self.inner = self.inner.accept_compressed(encoding);
             self
         }
+        #[tracing::instrument(level = "info", skip(self, limit))]
         /// Limits the maximum size of a decoded message.
         ///
         /// Default: `4MB`
@@ -1698,6 +1726,7 @@ pub mod executor_grpc_client {
             self.inner = self.inner.max_decoding_message_size(limit);
             self
         }
+        #[tracing::instrument(level = "info", skip(self, limit))]
         /// Limits the maximum size of an encoded message.
         ///
         /// Default: `usize::MAX`
@@ -1706,6 +1735,7 @@ pub mod executor_grpc_client {
             self.inner = self.inner.max_encoding_message_size(limit);
             self
         }
+        #[tracing::instrument(level = "info", skip(self, request))]
         pub async fn launch_task(
             &mut self,
             request: impl tonic::IntoRequest<super::LaunchTaskParams>,
@@ -1731,6 +1761,7 @@ pub mod executor_grpc_client {
                 .insert(GrpcMethod::new("ballista.protobuf.ExecutorGrpc", "LaunchTask"));
             self.inner.unary(req, path, codec).await
         }
+        #[tracing::instrument(level = "info", skip(self, request))]
         pub async fn launch_multi_task(
             &mut self,
             request: impl tonic::IntoRequest<super::LaunchMultiTaskParams>,
@@ -1758,6 +1789,7 @@ pub mod executor_grpc_client {
                 );
             self.inner.unary(req, path, codec).await
         }
+        #[tracing::instrument(level = "info", skip(self, request))]
         pub async fn stop_executor(
             &mut self,
             request: impl tonic::IntoRequest<super::StopExecutorParams>,
@@ -1785,6 +1817,7 @@ pub mod executor_grpc_client {
                 );
             self.inner.unary(req, path, codec).await
         }
+        #[tracing::instrument(level = "info", skip(self, request))]
         pub async fn cancel_tasks(
             &mut self,
             request: impl tonic::IntoRequest<super::CancelTasksParams>,
@@ -1812,6 +1845,7 @@ pub mod executor_grpc_client {
                 );
             self.inner.unary(req, path, codec).await
         }
+        #[tracing::instrument(level = "info", skip(self, request))]
         pub async fn remove_job_data(
             &mut self,
             request: impl tonic::IntoRequest<super::RemoveJobDataParams>,
@@ -1945,9 +1979,11 @@ pub mod scheduler_grpc_server {
     }
     struct _Inner<T>(Arc<T>);
     impl<T: SchedulerGrpc> SchedulerGrpcServer<T> {
+        #[tracing::instrument(level = "info", skip(inner))]
         pub fn new(inner: T) -> Self {
             Self::from_arc(Arc::new(inner))
         }
+        #[tracing::instrument(level = "info", skip(inner))]
         pub fn from_arc(inner: Arc<T>) -> Self {
             let inner = _Inner(inner);
             Self {
@@ -1958,6 +1994,7 @@ pub mod scheduler_grpc_server {
                 max_encoding_message_size: None,
             }
         }
+        #[tracing::instrument(level = "info", skip(inner, interceptor))]
         pub fn with_interceptor<F>(
             inner: T,
             interceptor: F,
@@ -1967,18 +2004,21 @@ pub mod scheduler_grpc_server {
         {
             InterceptedService::new(Self::new(inner), interceptor)
         }
+        #[tracing::instrument(level = "info", skip(self, encoding))]
         /// Enable decompressing requests with the given encoding.
         #[must_use]
         pub fn accept_compressed(mut self, encoding: CompressionEncoding) -> Self {
             self.accept_compression_encodings.enable(encoding);
             self
         }
+        #[tracing::instrument(level = "info", skip(self, encoding))]
         /// Compress responses with the given encoding, if the client supports it.
         #[must_use]
         pub fn send_compressed(mut self, encoding: CompressionEncoding) -> Self {
             self.send_compression_encodings.enable(encoding);
             self
         }
+        #[tracing::instrument(level = "info", skip(self, limit))]
         /// Limits the maximum size of a decoded message.
         ///
         /// Default: `4MB`
@@ -1987,6 +2027,7 @@ pub mod scheduler_grpc_server {
             self.max_decoding_message_size = Some(limit);
             self
         }
+        #[tracing::instrument(level = "info", skip(self, limit))]
         /// Limits the maximum size of an encoded message.
         ///
         /// Default: `usize::MAX`
@@ -2005,12 +2046,14 @@ pub mod scheduler_grpc_server {
         type Response = http::Response<tonic::body::BoxBody>;
         type Error = std::convert::Infallible;
         type Future = BoxFuture<Self::Response, Self::Error>;
+        #[tracing::instrument(level = "info", skip(self, _cx))]
         fn poll_ready(
             &mut self,
             _cx: &mut Context<'_>,
         ) -> Poll<std::result::Result<(), Self::Error>> {
             Poll::Ready(Ok(()))
         }
+        #[tracing::instrument(level = "info", skip(self, req))]
         fn call(&mut self, req: http::Request<B>) -> Self::Future {
             let inner = self.inner.clone();
             match req.uri().path() {
@@ -2026,6 +2069,7 @@ pub mod scheduler_grpc_server {
                             tonic::Response<Self::Response>,
                             tonic::Status,
                         >;
+                        #[tracing::instrument(level = "info", skip(self, request))]
                         fn call(
                             &mut self,
                             request: tonic::Request<super::PollWorkParams>,
@@ -2072,6 +2116,7 @@ pub mod scheduler_grpc_server {
                             tonic::Response<Self::Response>,
                             tonic::Status,
                         >;
+                        #[tracing::instrument(level = "info", skip(self, request))]
                         fn call(
                             &mut self,
                             request: tonic::Request<super::RegisterExecutorParams>,
@@ -2119,6 +2164,7 @@ pub mod scheduler_grpc_server {
                             tonic::Response<Self::Response>,
                             tonic::Status,
                         >;
+                        #[tracing::instrument(level = "info", skip(self, request))]
                         fn call(
                             &mut self,
                             request: tonic::Request<super::HeartBeatParams>,
@@ -2169,6 +2215,7 @@ pub mod scheduler_grpc_server {
                             tonic::Response<Self::Response>,
                             tonic::Status,
                         >;
+                        #[tracing::instrument(level = "info", skip(self, request))]
                         fn call(
                             &mut self,
                             request: tonic::Request<super::UpdateTaskStatusParams>,
@@ -2216,6 +2263,7 @@ pub mod scheduler_grpc_server {
                             tonic::Response<Self::Response>,
                             tonic::Status,
                         >;
+                        #[tracing::instrument(level = "info", skip(self, request))]
                         fn call(
                             &mut self,
                             request: tonic::Request<super::GetFileMetadataParams>,
@@ -2263,6 +2311,7 @@ pub mod scheduler_grpc_server {
                             tonic::Response<Self::Response>,
                             tonic::Status,
                         >;
+                        #[tracing::instrument(level = "info", skip(self, request))]
                         fn call(
                             &mut self,
                             request: tonic::Request<super::CreateSessionParams>,
@@ -2309,6 +2358,7 @@ pub mod scheduler_grpc_server {
                             tonic::Response<Self::Response>,
                             tonic::Status,
                         >;
+                        #[tracing::instrument(level = "info", skip(self, request))]
                         fn call(
                             &mut self,
                             request: tonic::Request<super::UpdateSessionParams>,
@@ -2355,6 +2405,7 @@ pub mod scheduler_grpc_server {
                             tonic::Response<Self::Response>,
                             tonic::Status,
                         >;
+                        #[tracing::instrument(level = "info", skip(self, request))]
                         fn call(
                             &mut self,
                             request: tonic::Request<super::RemoveSessionParams>,
@@ -2401,6 +2452,7 @@ pub mod scheduler_grpc_server {
                             tonic::Response<Self::Response>,
                             tonic::Status,
                         >;
+                        #[tracing::instrument(level = "info", skip(self, request))]
                         fn call(
                             &mut self,
                             request: tonic::Request<super::ExecuteQueryParams>,
@@ -2447,6 +2499,7 @@ pub mod scheduler_grpc_server {
                             tonic::Response<Self::Response>,
                             tonic::Status,
                         >;
+                        #[tracing::instrument(level = "info", skip(self, request))]
                         fn call(
                             &mut self,
                             request: tonic::Request<super::GetJobStatusParams>,
@@ -2493,6 +2546,7 @@ pub mod scheduler_grpc_server {
                             tonic::Response<Self::Response>,
                             tonic::Status,
                         >;
+                        #[tracing::instrument(level = "info", skip(self, request))]
                         fn call(
                             &mut self,
                             request: tonic::Request<super::ExecutorStoppedParams>,
@@ -2540,6 +2594,7 @@ pub mod scheduler_grpc_server {
                             tonic::Response<Self::Response>,
                             tonic::Status,
                         >;
+                        #[tracing::instrument(level = "info", skip(self, request))]
                         fn call(
                             &mut self,
                             request: tonic::Request<super::CancelJobParams>,
@@ -2586,6 +2641,7 @@ pub mod scheduler_grpc_server {
                             tonic::Response<Self::Response>,
                             tonic::Status,
                         >;
+                        #[tracing::instrument(level = "info", skip(self, request))]
                         fn call(
                             &mut self,
                             request: tonic::Request<super::CleanJobDataParams>,
@@ -2636,6 +2692,7 @@ pub mod scheduler_grpc_server {
         }
     }
     impl<T: SchedulerGrpc> Clone for SchedulerGrpcServer<T> {
+        #[tracing::instrument(level = "info", skip(self))]
         fn clone(&self) -> Self {
             let inner = self.inner.clone();
             Self {
@@ -2648,11 +2705,13 @@ pub mod scheduler_grpc_server {
         }
     }
     impl<T: SchedulerGrpc> Clone for _Inner<T> {
+        #[tracing::instrument(level = "info", skip(self))]
         fn clone(&self) -> Self {
             Self(Arc::clone(&self.0))
         }
     }
     impl<T: std::fmt::Debug> std::fmt::Debug for _Inner<T> {
+        #[tracing::instrument(level = "info", skip(self, f))]
         fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
             write!(f, "{:?}", self.0)
         }
@@ -2714,9 +2773,11 @@ pub mod executor_grpc_server {
     }
     struct _Inner<T>(Arc<T>);
     impl<T: ExecutorGrpc> ExecutorGrpcServer<T> {
+        #[tracing::instrument(level = "info", skip(inner))]
         pub fn new(inner: T) -> Self {
             Self::from_arc(Arc::new(inner))
         }
+        #[tracing::instrument(level = "info", skip(inner))]
         pub fn from_arc(inner: Arc<T>) -> Self {
             let inner = _Inner(inner);
             Self {
@@ -2727,6 +2788,7 @@ pub mod executor_grpc_server {
                 max_encoding_message_size: None,
             }
         }
+        #[tracing::instrument(level = "info", skip(inner, interceptor))]
         pub fn with_interceptor<F>(
             inner: T,
             interceptor: F,
@@ -2736,18 +2798,21 @@ pub mod executor_grpc_server {
         {
             InterceptedService::new(Self::new(inner), interceptor)
         }
+        #[tracing::instrument(level = "info", skip(self, encoding))]
         /// Enable decompressing requests with the given encoding.
         #[must_use]
         pub fn accept_compressed(mut self, encoding: CompressionEncoding) -> Self {
             self.accept_compression_encodings.enable(encoding);
             self
         }
+        #[tracing::instrument(level = "info", skip(self, encoding))]
         /// Compress responses with the given encoding, if the client supports it.
         #[must_use]
         pub fn send_compressed(mut self, encoding: CompressionEncoding) -> Self {
             self.send_compression_encodings.enable(encoding);
             self
         }
+        #[tracing::instrument(level = "info", skip(self, limit))]
         /// Limits the maximum size of a decoded message.
         ///
         /// Default: `4MB`
@@ -2756,6 +2821,7 @@ pub mod executor_grpc_server {
             self.max_decoding_message_size = Some(limit);
             self
         }
+        #[tracing::instrument(level = "info", skip(self, limit))]
         /// Limits the maximum size of an encoded message.
         ///
         /// Default: `usize::MAX`
@@ -2774,12 +2840,14 @@ pub mod executor_grpc_server {
         type Response = http::Response<tonic::body::BoxBody>;
         type Error = std::convert::Infallible;
         type Future = BoxFuture<Self::Response, Self::Error>;
+        #[tracing::instrument(level = "info", skip(self, _cx))]
         fn poll_ready(
             &mut self,
             _cx: &mut Context<'_>,
         ) -> Poll<std::result::Result<(), Self::Error>> {
             Poll::Ready(Ok(()))
         }
+        #[tracing::instrument(level = "info", skip(self, req))]
         fn call(&mut self, req: http::Request<B>) -> Self::Future {
             let inner = self.inner.clone();
             match req.uri().path() {
@@ -2795,6 +2863,7 @@ pub mod executor_grpc_server {
                             tonic::Response<Self::Response>,
                             tonic::Status,
                         >;
+                        #[tracing::instrument(level = "info", skip(self, request))]
                         fn call(
                             &mut self,
                             request: tonic::Request<super::LaunchTaskParams>,
@@ -2841,6 +2910,7 @@ pub mod executor_grpc_server {
                             tonic::Response<Self::Response>,
                             tonic::Status,
                         >;
+                        #[tracing::instrument(level = "info", skip(self, request))]
                         fn call(
                             &mut self,
                             request: tonic::Request<super::LaunchMultiTaskParams>,
@@ -2888,6 +2958,7 @@ pub mod executor_grpc_server {
                             tonic::Response<Self::Response>,
                             tonic::Status,
                         >;
+                        #[tracing::instrument(level = "info", skip(self, request))]
                         fn call(
                             &mut self,
                             request: tonic::Request<super::StopExecutorParams>,
@@ -2934,6 +3005,7 @@ pub mod executor_grpc_server {
                             tonic::Response<Self::Response>,
                             tonic::Status,
                         >;
+                        #[tracing::instrument(level = "info", skip(self, request))]
                         fn call(
                             &mut self,
                             request: tonic::Request<super::CancelTasksParams>,
@@ -2980,6 +3052,7 @@ pub mod executor_grpc_server {
                             tonic::Response<Self::Response>,
                             tonic::Status,
                         >;
+                        #[tracing::instrument(level = "info", skip(self, request))]
                         fn call(
                             &mut self,
                             request: tonic::Request<super::RemoveJobDataParams>,
@@ -3030,6 +3103,7 @@ pub mod executor_grpc_server {
         }
     }
     impl<T: ExecutorGrpc> Clone for ExecutorGrpcServer<T> {
+        #[tracing::instrument(level = "info", skip(self))]
         fn clone(&self) -> Self {
             let inner = self.inner.clone();
             Self {
@@ -3042,11 +3116,13 @@ pub mod executor_grpc_server {
         }
     }
     impl<T: ExecutorGrpc> Clone for _Inner<T> {
+        #[tracing::instrument(level = "info", skip(self))]
         fn clone(&self) -> Self {
             Self(Arc::clone(&self.0))
         }
     }
     impl<T: std::fmt::Debug> std::fmt::Debug for _Inner<T> {
+        #[tracing::instrument(level = "info", skip(self, f))]
         fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
             write!(f, "{:?}", self.0)
         }

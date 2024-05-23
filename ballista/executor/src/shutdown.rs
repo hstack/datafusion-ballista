@@ -36,6 +36,7 @@ pub struct Shutdown {
 }
 
 impl Shutdown {
+    #[tracing::instrument(level = "info", skip(notify))]
     /// Create a new `Shutdown` backed by the given `broadcast::Receiver`.
     pub fn new(notify: broadcast::Receiver<()>) -> Shutdown {
         Shutdown {
@@ -44,11 +45,13 @@ impl Shutdown {
         }
     }
 
+    #[tracing::instrument(level = "info", skip(self))]
     /// Returns `true` if the shutdown signal has been received.
     pub fn is_shutdown(&self) -> bool {
         self.shutdown
     }
 
+    #[tracing::instrument(level = "info", skip(self))]
     /// Receive the shutdown notice, waiting if necessary.
     pub async fn recv(&mut self) {
         // If the shutdown signal has already been received, then return
@@ -81,6 +84,7 @@ pub struct ShutdownNotifier {
 }
 
 impl ShutdownNotifier {
+    #[tracing::instrument(level = "info", skip())]
     /// Create a new ShutdownNotifier instance
     pub fn new() -> Self {
         let (notify_shutdown, _) = broadcast::channel(1);
@@ -92,6 +96,7 @@ impl ShutdownNotifier {
         }
     }
 
+    #[tracing::instrument(level = "info", skip(self))]
     /// Subscribe for shutdown notification
     pub fn subscribe_for_shutdown(&self) -> Shutdown {
         Shutdown::new(self.notify_shutdown.subscribe())
@@ -99,6 +104,7 @@ impl ShutdownNotifier {
 }
 
 impl Default for ShutdownNotifier {
+    #[tracing::instrument(level = "info", skip())]
     fn default() -> Self {
         ShutdownNotifier::new()
     }

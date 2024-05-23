@@ -67,6 +67,7 @@ pub struct DistributedQueryExec<T: 'static + AsLogicalPlan> {
 }
 
 impl<T: 'static + AsLogicalPlan> DistributedQueryExec<T> {
+    #[tracing::instrument(level = "info", skip(scheduler_url, config, plan, session_id))]
     pub fn new(
         scheduler_url: String,
         config: BallistaConfig,
@@ -85,6 +86,7 @@ impl<T: 'static + AsLogicalPlan> DistributedQueryExec<T> {
         }
     }
 
+    #[tracing::instrument(level = "info", skip(scheduler_url, config, plan, extension_codec, session_id))]
     pub fn with_extension(
         scheduler_url: String,
         config: BallistaConfig,
@@ -104,6 +106,7 @@ impl<T: 'static + AsLogicalPlan> DistributedQueryExec<T> {
         }
     }
 
+    #[tracing::instrument(level = "info", skip(scheduler_url, config, plan, extension_codec, plan_repr, session_id))]
     pub fn with_repr(
         scheduler_url: String,
         config: BallistaConfig,
@@ -124,6 +127,7 @@ impl<T: 'static + AsLogicalPlan> DistributedQueryExec<T> {
         }
     }
 
+    #[tracing::instrument(level = "info", skip(schema))]
     /// This function creates the cache object that stores the plan properties such as schema, equivalence properties, ordering, partitioning, etc.
     fn compute_properties(
         schema: SchemaRef,
@@ -140,6 +144,7 @@ impl<T: 'static + AsLogicalPlan> DistributedQueryExec<T> {
 }
 
 impl<T: 'static + AsLogicalPlan> DisplayAs for DistributedQueryExec<T> {
+    #[tracing::instrument(level = "info", skip(self, t, f))]
     fn fmt_as(
         &self,
         t: DisplayFormatType,
@@ -158,20 +163,25 @@ impl<T: 'static + AsLogicalPlan> DisplayAs for DistributedQueryExec<T> {
 }
 
 impl<T: 'static + AsLogicalPlan> ExecutionPlan for DistributedQueryExec<T> {
+    #[tracing::instrument(level = "info", skip(self))]
     fn as_any(&self) -> &dyn Any {
         self
     }
 
+    #[tracing::instrument(level = "info", skip(self))]
     fn schema(&self) -> SchemaRef {
         self.plan.schema().as_ref().clone().into()
     }
 
+    #[tracing::instrument(level = "info", skip(self))]
     fn properties(&self) -> &PlanProperties { &self.cache }
 
+    #[tracing::instrument(level = "info", skip(self))]
     fn children(&self) -> Vec<Arc<dyn ExecutionPlan>> {
         vec![]
     }
 
+    #[tracing::instrument(level = "info", skip(self, _children))]
     fn with_new_children(
         self: Arc<Self>,
         _children: Vec<Arc<dyn ExecutionPlan>>,
@@ -187,6 +197,7 @@ impl<T: 'static + AsLogicalPlan> ExecutionPlan for DistributedQueryExec<T> {
         }))
     }
 
+    #[tracing::instrument(level = "info", skip(self, partition, _context))]
     fn execute(
         &self,
         partition: usize,
@@ -229,6 +240,7 @@ impl<T: 'static + AsLogicalPlan> ExecutionPlan for DistributedQueryExec<T> {
         Ok(Box::pin(RecordBatchStreamAdapter::new(schema, stream)))
     }
 
+    #[tracing::instrument(level = "info", skip(self))]
     fn statistics(&self) -> Result<Statistics> {
         // This execution plan sends the logical plan to the scheduler without
         // performing the node by node conversion to a full physical plan.
@@ -237,6 +249,7 @@ impl<T: 'static + AsLogicalPlan> ExecutionPlan for DistributedQueryExec<T> {
     }
 }
 
+#[tracing::instrument(level = "info", skip(scheduler_url, session_id, query, max_message_size))]
 async fn execute_query(
     scheduler_url: String,
     session_id: String,
@@ -328,6 +341,7 @@ async fn execute_query(
     }
 }
 
+#[tracing::instrument(level = "info", skip(location))]
 async fn fetch_partition(
     location: PartitionLocation,
 ) -> Result<SendableRecordBatchStream> {

@@ -28,6 +28,7 @@ use datafusion::physical_plan::{
 use log::{error, info};
 use std::fmt;
 
+#[tracing::instrument(level = "info", skip(job_id, stage_id, plan, stage_metrics))]
 pub fn print_stage_metrics(
     job_id: &str,
     stage_id: usize,
@@ -66,12 +67,14 @@ pub struct DisplayableBallistaExecutionPlan<'a> {
 }
 
 impl<'a> DisplayableBallistaExecutionPlan<'a> {
+    #[tracing::instrument(level = "info", skip(inner, metrics))]
     /// Create a wrapper around an [`'ExecutionPlan'] which can be
     /// pretty printed with aggregated metrics.
     pub fn new(inner: &'a dyn ExecutionPlan, metrics: &'a Vec<MetricsSet>) -> Self {
         Self { inner, metrics }
     }
 
+    #[tracing::instrument(level = "info", skip(self))]
     /// Return a `format`able structure that produces a single line
     /// per node.
     ///
@@ -88,6 +91,7 @@ impl<'a> DisplayableBallistaExecutionPlan<'a> {
             metrics: &'a Vec<MetricsSet>,
         }
         impl<'a> fmt::Display for Wrapper<'a> {
+            #[tracing::instrument(level = "info", skip(self, f))]
             fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
                 let t = DisplayFormatType::Default;
                 let mut visitor = IndentVisitor {
@@ -123,6 +127,7 @@ struct IndentVisitor<'a, 'b> {
 
 impl<'a, 'b> ExecutionPlanVisitor for IndentVisitor<'a, 'b> {
     type Error = fmt::Error;
+    #[tracing::instrument(level = "info", skip(self, plan))]
     fn pre_visit(
         &mut self,
         plan: &dyn ExecutionPlan,
@@ -144,6 +149,7 @@ impl<'a, 'b> ExecutionPlanVisitor for IndentVisitor<'a, 'b> {
         Ok(true)
     }
 
+    #[tracing::instrument(level = "info", skip(self, _plan))]
     fn post_visit(&mut self, _plan: &dyn ExecutionPlan) -> Result<bool, Self::Error> {
         self.indent -= 1;
         Ok(true)
@@ -151,6 +157,7 @@ impl<'a, 'b> ExecutionPlanVisitor for IndentVisitor<'a, 'b> {
 }
 
 impl<'a> ToStringifiedPlan for DisplayableBallistaExecutionPlan<'a> {
+    #[tracing::instrument(level = "info", skip(self, plan_type))]
     fn to_stringified(
         &self,
         plan_type: datafusion::logical_expr::PlanType,

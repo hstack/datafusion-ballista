@@ -42,6 +42,7 @@ use protobuf::{operator_metric, NamedCount, NamedGauge, NamedTime};
 impl TryInto<Action> for protobuf::Action {
     type Error = BallistaError;
 
+    #[tracing::instrument(level = "info", skip(self))]
     fn try_into(self) -> Result<Action, Self::Error> {
         match self.action_type {
             Some(protobuf::action::ActionType::FetchPartition(fetch)) => {
@@ -63,6 +64,7 @@ impl TryInto<Action> for protobuf::Action {
 
 #[allow(clippy::from_over_into)]
 impl Into<PartitionId> for protobuf::PartitionId {
+    #[tracing::instrument(level = "info", skip(self))]
     fn into(self) -> PartitionId {
         PartitionId::new(
             &self.job_id,
@@ -74,6 +76,7 @@ impl Into<PartitionId> for protobuf::PartitionId {
 
 #[allow(clippy::from_over_into)]
 impl Into<PartitionStats> for protobuf::PartitionStats {
+    #[tracing::instrument(level = "info", skip(self))]
     fn into(self) -> PartitionStats {
         PartitionStats::new(
             foo(self.num_rows),
@@ -83,6 +86,7 @@ impl Into<PartitionStats> for protobuf::PartitionStats {
     }
 }
 
+#[tracing::instrument(level = "info", skip(n))]
 fn foo(n: i64) -> Option<u64> {
     if n < 0 {
         None
@@ -94,6 +98,7 @@ fn foo(n: i64) -> Option<u64> {
 impl TryInto<PartitionLocation> for protobuf::PartitionLocation {
     type Error = BallistaError;
 
+    #[tracing::instrument(level = "info", skip(self))]
     fn try_into(self) -> Result<PartitionLocation, Self::Error> {
         Ok(PartitionLocation {
             map_partition_id: self.map_partition_id as usize,
@@ -129,6 +134,7 @@ impl TryInto<PartitionLocation> for protobuf::PartitionLocation {
 impl TryInto<MetricValue> for protobuf::OperatorMetric {
     type Error = BallistaError;
 
+    #[tracing::instrument(level = "info", skip(self))]
     fn try_into(self) -> Result<MetricValue, Self::Error> {
         match self.metric {
             Some(operator_metric::Metric::OutputRows(value)) => {
@@ -205,6 +211,7 @@ impl TryInto<MetricValue> for protobuf::OperatorMetric {
 impl TryInto<MetricsSet> for protobuf::OperatorMetricsSet {
     type Error = BallistaError;
 
+    #[tracing::instrument(level = "info", skip(self))]
     fn try_into(self) -> Result<MetricsSet, Self::Error> {
         let mut ms = MetricsSet::new();
         let metrics = self
@@ -223,6 +230,7 @@ impl TryInto<MetricsSet> for protobuf::OperatorMetricsSet {
 
 #[allow(clippy::from_over_into)]
 impl Into<ExecutorMetadata> for protobuf::ExecutorMetadata {
+    #[tracing::instrument(level = "info", skip(self))]
     fn into(self) -> ExecutorMetadata {
         ExecutorMetadata {
             id: self.id,
@@ -236,6 +244,7 @@ impl Into<ExecutorMetadata> for protobuf::ExecutorMetadata {
 
 #[allow(clippy::from_over_into)]
 impl Into<ExecutorSpecification> for protobuf::ExecutorSpecification {
+    #[tracing::instrument(level = "info", skip(self))]
     fn into(self) -> ExecutorSpecification {
         let mut ret = ExecutorSpecification { task_slots: 0 };
         for resource in self.resources {
@@ -251,6 +260,7 @@ impl Into<ExecutorSpecification> for protobuf::ExecutorSpecification {
 
 #[allow(clippy::from_over_into)]
 impl Into<ExecutorData> for protobuf::ExecutorData {
+    #[tracing::instrument(level = "info", skip(self))]
     fn into(self) -> ExecutorData {
         let mut ret = ExecutorData {
             executor_id: self.executor_id,
@@ -279,6 +289,7 @@ impl Into<ExecutorData> for protobuf::ExecutorData {
     }
 }
 
+#[tracing::instrument(level = "info", skip(task, runtime, scalar_functions, aggregate_functions, window_functions, codec))]
 pub fn get_task_definition<T: 'static + AsLogicalPlan, U: 'static + AsExecutionPlan>(
     task: protobuf::TaskDefinition,
     runtime: Arc<RuntimeEnv>,
@@ -345,6 +356,7 @@ pub fn get_task_definition<T: 'static + AsLogicalPlan, U: 'static + AsExecutionP
     })
 }
 
+#[tracing::instrument(level = "info", skip(multi_task, runtime, scalar_functions, aggregate_functions, window_functions, codec))]
 pub fn get_task_definition_vec<
     T: 'static + AsLogicalPlan,
     U: 'static + AsExecutionPlan,
@@ -417,6 +429,7 @@ pub fn get_task_definition_vec<
         .collect()
 }
 
+#[tracing::instrument(level = "info", skip(plan))]
 fn reset_metrics_for_execution_plan(
     plan: Arc<dyn ExecutionPlan>,
 ) -> Result<Arc<dyn ExecutionPlan>, BallistaError> {

@@ -65,6 +65,7 @@ pub struct SchedulerConfig {
 }
 
 impl Default for SchedulerConfig {
+    #[tracing::instrument(level = "info", skip())]
     fn default() -> Self {
         Self {
             namespace: String::default(),
@@ -89,39 +90,47 @@ impl Default for SchedulerConfig {
 }
 
 impl SchedulerConfig {
+    #[tracing::instrument(level = "info", skip(self))]
     pub fn scheduler_name(&self) -> String {
         format!("{}:{}", self.external_host, self.bind_port)
     }
 
+    #[tracing::instrument(level = "info", skip(self))]
     pub fn is_push_staged_scheduling(&self) -> bool {
         matches!(self.scheduling_policy, TaskSchedulingPolicy::PushStaged)
     }
 
+    #[tracing::instrument(level = "info", skip(self, namespace))]
     pub fn with_namespace(mut self, namespace: impl Into<String>) -> Self {
         self.namespace = namespace.into();
         self
     }
 
+    #[tracing::instrument(level = "info", skip(self, hostname))]
     pub fn with_hostname(mut self, hostname: impl Into<String>) -> Self {
         self.external_host = hostname.into();
         self
     }
 
+    #[tracing::instrument(level = "info", skip(self, port))]
     pub fn with_port(mut self, port: u16) -> Self {
         self.bind_port = port;
         self
     }
 
+    #[tracing::instrument(level = "info", skip(self, policy))]
     pub fn with_scheduler_policy(mut self, policy: TaskSchedulingPolicy) -> Self {
         self.scheduling_policy = policy;
         self
     }
 
+    #[tracing::instrument(level = "info", skip(self, buffer_size))]
     pub fn with_event_loop_buffer_size(mut self, buffer_size: u32) -> Self {
         self.event_loop_buffer_size = buffer_size;
         self
     }
 
+    #[tracing::instrument(level = "info", skip(self, interval_seconds))]
     pub fn with_finished_job_data_clean_up_interval_seconds(
         mut self,
         interval_seconds: u64,
@@ -130,6 +139,7 @@ impl SchedulerConfig {
         self
     }
 
+    #[tracing::instrument(level = "info", skip(self, interval_seconds))]
     pub fn with_finished_job_state_clean_up_interval_seconds(
         mut self,
         interval_seconds: u64,
@@ -138,6 +148,7 @@ impl SchedulerConfig {
         self
     }
 
+    #[tracing::instrument(level = "info", skip(self, endpoint))]
     pub fn with_advertise_flight_sql_endpoint(
         mut self,
         endpoint: Option<String>,
@@ -146,31 +157,37 @@ impl SchedulerConfig {
         self
     }
 
+    #[tracing::instrument(level = "info", skip(self, policy))]
     pub fn with_task_distribution(mut self, policy: TaskDistributionPolicy) -> Self {
         self.task_distribution = policy;
         self
     }
 
+    #[tracing::instrument(level = "info", skip(self, config))]
     pub fn with_cluster_storage(mut self, config: ClusterStorageConfig) -> Self {
         self.cluster_storage = config;
         self
     }
 
+    #[tracing::instrument(level = "info", skip(self, interval_ms))]
     pub fn with_job_resubmit_interval_ms(mut self, interval_ms: u64) -> Self {
         self.job_resubmit_interval_ms = Some(interval_ms);
         self
     }
 
+    #[tracing::instrument(level = "info", skip(self, value))]
     pub fn with_remove_executor_wait_secs(mut self, value: u64) -> Self {
         self.executor_termination_grace_period = value;
         self
     }
 
+    #[tracing::instrument(level = "info", skip(self, value))]
     pub fn with_grpc_server_max_decoding_message_size(mut self, value: u32) -> Self {
         self.grpc_server_max_decoding_message_size = value;
         self
     }
 
+    #[tracing::instrument(level = "info", skip(self, value))]
     pub fn with_grpc_server_max_encoding_message_size(mut self, value: u32) -> Self {
         self.grpc_server_max_encoding_message_size = value;
         self
@@ -207,12 +224,14 @@ pub enum TaskDistribution {
 impl std::str::FromStr for TaskDistribution {
     type Err = String;
 
+    #[tracing::instrument(level = "info", skip(s))]
     fn from_str(s: &str) -> std::result::Result<Self, Self::Err> {
         ArgEnum::from_str(s, true)
     }
 }
 
 impl parse_arg::ParseArgFromStr for TaskDistribution {
+    #[tracing::instrument(level = "info", skip(writer))]
     fn describe_type<W: fmt::Write>(mut writer: W) -> fmt::Result {
         write!(writer, "The executor slots policy for the scheduler")
     }

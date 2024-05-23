@@ -37,6 +37,7 @@ pub enum Keyspace {
 }
 
 impl Keyspace {
+    #[tracing::instrument(level = "info", skip(self, key))]
     pub fn strip_prefix<'a>(&'a self, key: &'a str) -> Option<&'a str> {
         key.strip_prefix(&format!("{self:?}/"))
     }
@@ -136,5 +137,6 @@ pub trait Lock: Send + Sync {
 
 #[async_trait]
 impl<T: Send + Sync> Lock for OwnedMutexGuard<T> {
+    #[tracing::instrument(level = "info", skip(self))]
     async fn unlock(&mut self) {}
 }

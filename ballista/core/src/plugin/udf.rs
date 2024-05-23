@@ -54,6 +54,7 @@ pub struct UDFPluginManager {
 }
 
 impl PluginRegistrar for UDFPluginManager {
+    #[tracing::instrument(level = "info", skip(self, library))]
     unsafe fn load(&mut self, library: Arc<Library>) -> Result<()> {
         type PluginRegister = unsafe fn() -> Box<dyn UDFPlugin>;
         let register_fun: Symbol<PluginRegister> =
@@ -105,6 +106,7 @@ impl PluginRegistrar for UDFPluginManager {
         Ok(())
     }
 
+    #[tracing::instrument(level = "info", skip(self))]
     fn as_any(&self) -> &dyn Any {
         self
     }
@@ -132,6 +134,7 @@ macro_rules! declare_udf_plugin {
     };
 }
 
+#[tracing::instrument(level = "info", skip(path))]
 /// get a Option of Immutable UDFPluginManager
 pub fn get_udf_plugin_manager(path: &str) -> Option<UDFPluginManager> {
     let udf_plugin_manager_opt = {

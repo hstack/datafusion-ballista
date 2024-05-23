@@ -70,6 +70,7 @@ pub struct QueryStageSummary {
     pub elapsed_compute: String,
 }
 
+#[tracing::instrument(level = "info", skip(data_server))]
 /// Return current scheduler state
 pub(crate) async fn get_scheduler_state<T: AsLogicalPlan, U: AsExecutionPlan>(
     data_server: SchedulerServer<T, U>,
@@ -81,6 +82,7 @@ pub(crate) async fn get_scheduler_state<T: AsLogicalPlan, U: AsExecutionPlan>(
     Ok(warp::reply::json(&response))
 }
 
+#[tracing::instrument(level = "info", skip(data_server))]
 /// Return list of executors
 pub(crate) async fn get_executors<T: AsLogicalPlan, U: AsExecutionPlan>(
     data_server: SchedulerServer<T, U>,
@@ -103,6 +105,7 @@ pub(crate) async fn get_executors<T: AsLogicalPlan, U: AsExecutionPlan>(
     Ok(warp::reply::json(&executors))
 }
 
+#[tracing::instrument(level = "info", skip(data_server))]
 /// Return list of jobs
 pub(crate) async fn get_jobs<T: AsLogicalPlan, U: AsExecutionPlan>(
     data_server: SchedulerServer<T, U>,
@@ -166,6 +169,7 @@ pub(crate) async fn get_jobs<T: AsLogicalPlan, U: AsExecutionPlan>(
     Ok(warp::reply::json(&jobs))
 }
 
+#[tracing::instrument(level = "info", skip(data_server, job_id))]
 pub(crate) async fn cancel_job<T: AsLogicalPlan, U: AsExecutionPlan>(
     data_server: SchedulerServer<T, U>,
     job_id: String,
@@ -195,6 +199,7 @@ pub struct QueryStagesResponse {
     pub stages: Vec<QueryStageSummary>,
 }
 
+#[tracing::instrument(level = "info", skip(data_server, job_id))]
 /// Get the execution graph for the specified job id
 pub(crate) async fn get_query_stages<T: AsLogicalPlan, U: AsExecutionPlan>(
     data_server: SchedulerServer<T, U>,
@@ -261,6 +266,7 @@ pub(crate) async fn get_query_stages<T: AsLogicalPlan, U: AsExecutionPlan>(
     }
 }
 
+#[tracing::instrument(level = "info", skip(metrics))]
 fn get_elapsed_compute_nanos(metrics: &[MetricsSet]) -> String {
     let nanos: usize = metrics
         .iter()
@@ -276,6 +282,7 @@ fn get_elapsed_compute_nanos(metrics: &[MetricsSet]) -> String {
     t.to_string()
 }
 
+#[tracing::instrument(level = "info", skip(metrics, name))]
 fn get_combined_count(metrics: &[MetricsSet], name: &str) -> usize {
     metrics
         .iter()
@@ -292,6 +299,7 @@ fn get_combined_count(metrics: &[MetricsSet], name: &str) -> usize {
         .sum()
 }
 
+#[tracing::instrument(level = "info", skip(data_server, job_id))]
 /// Generate a dot graph for the specified job id and return as plain text
 pub(crate) async fn get_job_dot_graph<T: AsLogicalPlan, U: AsExecutionPlan>(
     data_server: SchedulerServer<T, U>,
@@ -310,6 +318,7 @@ pub(crate) async fn get_job_dot_graph<T: AsLogicalPlan, U: AsExecutionPlan>(
     }
 }
 
+#[tracing::instrument(level = "info", skip(data_server, job_id, stage_id))]
 /// Generate a dot graph for the specified job id and query stage and return as plain text
 pub(crate) async fn get_query_stage_dot_graph<T: AsLogicalPlan, U: AsExecutionPlan>(
     data_server: SchedulerServer<T, U>,
@@ -330,6 +339,7 @@ pub(crate) async fn get_query_stage_dot_graph<T: AsLogicalPlan, U: AsExecutionPl
     }
 }
 
+#[tracing::instrument(level = "info", skip(data_server, job_id))]
 /// Generate an SVG graph for the specified job id and return it as plain text
 pub(crate) async fn get_job_svg_graph<T: AsLogicalPlan, U: AsExecutionPlan>(
     data_server: SchedulerServer<T, U>,
@@ -355,6 +365,7 @@ pub(crate) async fn get_job_svg_graph<T: AsLogicalPlan, U: AsExecutionPlan>(
     }
 }
 
+#[tracing::instrument(level = "info", skip(data_server))]
 pub(crate) async fn get_scheduler_metrics<T: AsLogicalPlan, U: AsExecutionPlan>(
     data_server: SchedulerServer<T, U>,
 ) -> Result<impl warp::Reply, Rejection> {

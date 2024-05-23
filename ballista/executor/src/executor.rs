@@ -42,6 +42,7 @@ pub struct TasksDrainedFuture(pub Arc<Executor>);
 impl Future for TasksDrainedFuture {
     type Output = ();
 
+    #[tracing::instrument(level = "info", skip(self, _cx))]
     fn poll(self: Pin<&mut Self>, _cx: &mut Context<'_>) -> Poll<Self::Output> {
         if self.0.abort_handles.len() > 0 {
             Poll::Pending
@@ -94,6 +95,7 @@ pub struct Executor {
 }
 
 impl Executor {
+    #[tracing::instrument(level = "info", skip(metadata, work_dir, runtime, runtime_with_data_cache, metrics_collector, concurrent_tasks, execution_engine))]
     /// Create a new executor instance
     pub fn new(
         metadata: ExecutorRegistration,
@@ -123,6 +125,7 @@ impl Executor {
 }
 
 impl Executor {
+    #[tracing::instrument(level = "info", skip(self, data_cache))]
     pub fn get_runtime(&self, data_cache: bool) -> Arc<RuntimeEnv> {
         if data_cache {
             if let Some(runtime) = self.runtime_with_data_cache.clone() {
@@ -135,6 +138,7 @@ impl Executor {
         }
     }
 
+    #[tracing::instrument(level = "info", skip(self, task_id, partition, query_stage_exec, task_ctx))]
     /// Execute one partition of a query stage and persist the result to disk in IPC format. On
     /// success, return a RecordBatch containing metadata about the results, including path
     /// and statistics.
@@ -166,6 +170,7 @@ impl Executor {
         Ok(partitions)
     }
 
+    #[tracing::instrument(level = "info", skip(self, task_id, job_id, stage_id, partition_id))]
     pub async fn cancel_task(
         &self,
         task_id: usize,
@@ -188,10 +193,12 @@ impl Executor {
         }
     }
 
+    #[tracing::instrument(level = "info", skip(self))]
     pub fn work_dir(&self) -> &str {
         &self.work_dir
     }
 
+    #[tracing::instrument(level = "info", skip(self))]
     pub fn active_task_count(&self) -> usize {
         self.abort_handles.len()
     }
@@ -225,6 +232,7 @@ mod test {
     struct NeverendingRecordBatchStream;
 
     impl RecordBatchStream for NeverendingRecordBatchStream {
+        #[tracing::instrument(level = "info", skip(self))]
         fn schema(&self) -> SchemaRef {
             Arc::new(Schema::empty())
         }
@@ -233,6 +241,7 @@ mod test {
     impl Stream for NeverendingRecordBatchStream {
         type Item = Result<RecordBatch, DataFusionError>;
 
+        #[tracing::instrument(level = "info", skip(self, _cx))]
         fn poll_next(
             self: Pin<&mut Self>,
             _cx: &mut Context<'_>,
@@ -248,6 +257,7 @@ mod test {
     }
 
     impl NeverendingOperator {
+        #[tracing::instrument(level = "info", skip())]
         pub fn new() -> Self {
             NeverendingOperator {
                 cache: PlanProperties::new(
@@ -260,6 +270,7 @@ mod test {
     }
 
     impl DisplayAs for NeverendingOperator {
+        #[tracing::instrument(level = "info", skip(self, t, f))]
         fn fmt_as(
             &self,
             t: DisplayFormatType,
@@ -274,20 +285,25 @@ mod test {
     }
 
     impl ExecutionPlan for NeverendingOperator {
+        #[tracing::instrument(level = "info", skip(self))]
         fn as_any(&self) -> &dyn Any {
             self
         }
 
+        #[tracing::instrument(level = "info", skip(self))]
         fn schema(&self) -> SchemaRef {
             Arc::new(Schema::empty())
         }
 
+        #[tracing::instrument(level = "info", skip(self))]
         fn properties(&self) -> &PlanProperties { &self.cache }
 
+        #[tracing::instrument(level = "info", skip(self))]
         fn children(&self) -> Vec<Arc<dyn ExecutionPlan>> {
             vec![]
         }
 
+        #[tracing::instrument(level = "info", skip(self, _children))]
         fn with_new_children(
             self: Arc<Self>,
             _children: Vec<Arc<dyn ExecutionPlan>>,
@@ -295,6 +311,7 @@ mod test {
             Ok(self)
         }
 
+        #[tracing::instrument(level = "info", skip(self, _partition, _context))]
         fn execute(
             &self,
             _partition: usize,
@@ -303,6 +320,7 @@ mod test {
             Ok(Box::pin(NeverendingRecordBatchStream))
         }
 
+        #[tracing::instrument(level = "info", skip(self))]
         fn statistics(&self) -> Result<Statistics> {
             Ok(Statistics::new_unknown(&self.schema()))
         }

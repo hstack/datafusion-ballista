@@ -31,6 +31,7 @@ pub struct LocalDiskMedium {
 }
 
 impl LocalDiskMedium {
+    #[tracing::instrument(level = "info", skip(root_cache_dir))]
     pub fn new(root_cache_dir: String) -> Self {
         Self {
             cache_object_store: Arc::new(LocalFileSystem::new()),
@@ -40,20 +41,24 @@ impl LocalDiskMedium {
 }
 
 impl Display for LocalDiskMedium {
+    #[tracing::instrument(level = "info", skip(self, f))]
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         write!(f, "Cache medium with local disk({})", self.root_cache_dir)
     }
 }
 
 impl CacheMedium for LocalDiskMedium {
+    #[tracing::instrument(level = "info", skip(self))]
     fn as_any(&self) -> &dyn Any {
         self
     }
 
+    #[tracing::instrument(level = "info", skip(self))]
     fn get_object_store(&self) -> Arc<dyn ObjectStore> {
         self.cache_object_store.clone()
     }
 
+    #[tracing::instrument(level = "info", skip(self, source_location, source_object_store))]
     fn get_mapping_location(
         &self,
         source_location: &Path,

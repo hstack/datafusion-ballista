@@ -74,12 +74,14 @@ pub enum ClusterStorage {
 impl std::str::FromStr for ClusterStorage {
     type Err = String;
 
+    #[tracing::instrument(level = "info", skip(s))]
     fn from_str(s: &str) -> std::result::Result<Self, Self::Err> {
         ArgEnum::from_str(s, true)
     }
 }
 
 impl parse_arg::ParseArgFromStr for ClusterStorage {
+    #[tracing::instrument(level = "info", skip(writer))]
     fn describe_type<W: fmt::Write>(mut writer: W) -> fmt::Result {
         write!(writer, "The cluster storage backend for the scheduler")
     }
@@ -92,6 +94,7 @@ pub struct BallistaCluster {
 }
 
 impl BallistaCluster {
+    #[tracing::instrument(level = "info", skip(cluster_state, job_state))]
     pub fn new(
         cluster_state: Arc<dyn ClusterState>,
         job_state: Arc<dyn JobState>,
@@ -102,6 +105,7 @@ impl BallistaCluster {
         }
     }
 
+    #[tracing::instrument(level = "info", skip(scheduler, session_builder))]
     pub fn new_memory(
         scheduler: impl Into<String>,
         session_builder: SessionBuilder,
@@ -112,6 +116,7 @@ impl BallistaCluster {
         }
     }
 
+    #[tracing::instrument(level = "info", skip(store, scheduler, session_builder, codec))]
     pub fn new_kv<
         S: KeyValueStore,
         T: 'static + AsLogicalPlan,
@@ -130,6 +135,7 @@ impl BallistaCluster {
         }
     }
 
+    #[tracing::instrument(level = "info", skip(config))]
     pub async fn new_from_config(config: &SchedulerConfig) -> Result<Self> {
         let scheduler = config.scheduler_name();
 
@@ -194,10 +200,12 @@ impl BallistaCluster {
         }
     }
 
+    #[tracing::instrument(level = "info", skip(self))]
     pub fn cluster_state(&self) -> Arc<dyn ClusterState> {
         self.cluster_state.clone()
     }
 
+    #[tracing::instrument(level = "info", skip(self))]
     pub fn job_state(&self) -> Arc<dyn JobState> {
         self.job_state.clone()
     }
@@ -377,6 +385,7 @@ pub trait JobState: Send + Sync {
     ) -> Result<Option<Arc<SessionContext>>>;
 }
 
+#[tracing::instrument(level = "info", skip(slots, active_jobs, if_skip))]
 pub(crate) async fn bind_task_bias(
     mut slots: Vec<&mut AvailableTaskSlots>,
     active_jobs: Arc<HashMap<String, JobInfoCache>>,
@@ -464,6 +473,7 @@ pub(crate) async fn bind_task_bias(
     schedulable_tasks
 }
 
+#[tracing::instrument(level = "info", skip(slots, active_jobs, if_skip))]
 pub(crate) async fn bind_task_round_robin(
     mut slots: Vec<&mut AvailableTaskSlots>,
     active_jobs: Arc<HashMap<String, JobInfoCache>>,
@@ -563,6 +573,7 @@ type GetScanFilesFunc = fn(
     Arc<dyn ExecutionPlan>,
 ) -> datafusion::common::Result<Vec<Vec<Vec<PartitionedFile>>>>;
 
+#[tracing::instrument(level = "info", skip(topology_nodes, num_replicas, tolerance, active_jobs, get_scan_files))]
 pub(crate) async fn bind_task_consistent_hash(
     topology_nodes: HashMap<String, TopologyNode>,
     num_replicas: usize,
@@ -679,10 +690,12 @@ pub(crate) async fn bind_task_consistent_hash(
 
 // If if there's no plan which needs to scan files, skip it.
 // Or there are multiple plans which need to scan files for a stage, skip it.
+#[tracing::instrument(level = "info", skip(scan_files))]
 pub(crate) fn is_skip_consistent_hash(scan_files: &[Vec<Vec<PartitionedFile>>]) -> bool {
     scan_files.is_empty() || scan_files.len() > 1
 }
 
+#[tracing::instrument(level = "info", skip(plan))]
 /// Get all of the [`PartitionedFile`] to be scanned for an [`ExecutionPlan`]
 pub(crate) fn get_scan_files(
     plan: Arc<dyn ExecutionPlan>,
@@ -718,6 +731,7 @@ pub struct TopologyNode {
 }
 
 impl TopologyNode {
+    #[tracing::instrument(level = "info", skip(host, port, id, last_seen_ts, available_slots))]
     fn new(
         host: &str,
         port: u16,
@@ -735,10 +749,12 @@ impl TopologyNode {
 }
 
 impl consistent_hash::node::Node for TopologyNode {
+    #[tracing::instrument(level = "info", skip(self))]
     fn name(&self) -> &str {
         &self.name
     }
 
+    #[tracing::instrument(level = "info", skip(self))]
     fn is_valid(&self) -> bool {
         self.available_slots > 0
     }
@@ -975,6 +991,7 @@ mod test {
         Ok(())
     }
 
+    #[tracing::instrument(level = "info", skip(bound_tasks))]
     fn get_result(
         bound_tasks: Vec<BoundTask>,
     ) -> HashMap<String, HashMap<String, usize>> {
@@ -991,6 +1008,7 @@ mod test {
         result
     }
 
+    #[tracing::instrument(level = "info", skip(num_partition))]
     async fn mock_active_jobs(
         num_partition: usize,
     ) -> Result<HashMap<String, JobInfoCache>> {
@@ -1005,6 +1023,7 @@ mod test {
         Ok(active_jobs)
     }
 
+    #[tracing::instrument(level = "info", skip(job_id, num_partition, num_pending_task))]
     async fn mock_graph(
         job_id: &str,
         num_partition: usize,
@@ -1036,6 +1055,7 @@ mod test {
         Ok(graph)
     }
 
+    #[tracing::instrument(level = "info", skip())]
     fn mock_available_slots() -> Vec<AvailableTaskSlots> {
         vec![
             AvailableTaskSlots {
@@ -1053,6 +1073,7 @@ mod test {
         ]
     }
 
+    #[tracing::instrument(level = "info", skip())]
     fn mock_topology_nodes() -> HashMap<String, TopologyNode> {
         let mut topology_nodes = HashMap::new();
         topology_nodes.insert(
@@ -1070,6 +1091,7 @@ mod test {
         topology_nodes
     }
 
+    #[tracing::instrument(level = "info", skip(expected_job_id, job_id, num_partition))]
     fn mock_get_scan_files(
         expected_job_id: &str,
         job_id: &str,
@@ -1082,6 +1104,7 @@ mod test {
         })
     }
 
+    #[tracing::instrument(level = "info", skip(num_partition))]
     fn mock_scan_files(num_partition: usize) -> Vec<Vec<Vec<PartitionedFile>>> {
         let mut scan_files = vec![];
         for i in 0..num_partition {

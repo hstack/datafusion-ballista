@@ -85,6 +85,7 @@ pub struct FlightSqlServiceImpl {
 const TABLE_TYPES: [&str; 2] = ["TABLE", "VIEW"];
 
 impl FlightSqlServiceImpl {
+    #[tracing::instrument(level = "info", skip(server))]
     pub fn new(server: SchedulerServer<LogicalPlanNode, PhysicalPlanNode>) -> Self {
         Self {
             server,
@@ -93,6 +94,7 @@ impl FlightSqlServiceImpl {
         }
     }
 
+    #[tracing::instrument(level = "info", skip(self, ctx))]
     #[allow(deprecated)]
     fn tables(&self, ctx: Arc<SessionContext>) -> Result<RecordBatch, ArrowError> {
         let schema = Arc::new(Schema::new(vec![
@@ -124,6 +126,7 @@ impl FlightSqlServiceImpl {
         Ok(rb)
     }
 
+    #[tracing::instrument(level = "info", skip())]
     fn table_types() -> Result<RecordBatch, ArrowError> {
         let schema = Arc::new(Schema::new(vec![Field::new(
             "table_type",
@@ -139,6 +142,7 @@ impl FlightSqlServiceImpl {
         )
     }
 
+    #[tracing::instrument(level = "info", skip(self))]
     async fn create_ctx(&self) -> Result<Uuid, Status> {
         let config_builder = BallistaConfig::builder();
         let config = config_builder
@@ -159,6 +163,7 @@ impl FlightSqlServiceImpl {
         Ok(handle)
     }
 
+    #[tracing::instrument(level = "info", skip(self, req))]
     fn get_ctx<T>(&self, req: &Request<T>) -> Result<Arc<SessionContext>, Status> {
         let auth = req
             .metadata()
@@ -186,6 +191,7 @@ impl FlightSqlServiceImpl {
         }
     }
 
+    #[tracing::instrument(level = "info", skip(query, ctx))]
     async fn prepare_statement(
         query: &str,
         ctx: &Arc<SessionContext>,
@@ -198,6 +204,7 @@ impl FlightSqlServiceImpl {
         Ok(plan)
     }
 
+    #[tracing::instrument(level = "info", skip(self, job_id))]
     async fn check_job(&self, job_id: &String) -> Result<Option<SuccessfulJob>, Status> {
         let status = self
             .server
@@ -240,6 +247,7 @@ impl FlightSqlServiceImpl {
         }
     }
 
+    #[tracing::instrument(level = "info", skip(self, completed, num_rows, num_bytes))]
     async fn job_to_fetch_part(
         &self,
         completed: SuccessfulJob,
@@ -318,6 +326,7 @@ impl FlightSqlServiceImpl {
         Ok(fieps)
     }
 
+    #[tracing::instrument(level = "info", skip(self, job_id))]
     fn make_local_fieps(&self, job_id: &str) -> Result<Vec<FlightEndpoint>, Status> {
         // let (host, port) = ("127.0.0.1".to_string(), 50050); // TODO: use advertise host
         let (host, port) = match &self
@@ -368,12 +377,14 @@ impl FlightSqlServiceImpl {
         Ok(fieps)
     }
 
+    #[tracing::instrument(level = "info", skip(self, plan))]
     fn cache_plan(&self, plan: LogicalPlan) -> Result<Uuid, Status> {
         let handle = Uuid::new_v4();
         self.statements.insert(handle, plan);
         Ok(handle)
     }
 
+    #[tracing::instrument(level = "info", skip(self, handle))]
     fn get_plan(&self, handle: &Uuid) -> Result<LogicalPlan, Status> {
         if let Some(plan) = self.statements.get(handle) {
             Ok(plan.clone())
@@ -384,17 +395,20 @@ impl FlightSqlServiceImpl {
         }
     }
 
+    #[tracing::instrument(level = "info", skip(self, handle))]
     fn remove_plan(&self, handle: Uuid) -> Result<(), Status> {
         self.statements.remove(&handle);
         Ok(())
     }
 
+    #[tracing::instrument(level = "info", skip(self, schema))]
     fn df_schema_to_arrow(&self, schema: &DFSchemaRef) -> Result<Vec<u8>, Status> {
         let arrow_schema: Schema = (&**schema).into();
         let schema_bytes = self.schema_to_arrow(Arc::new(arrow_schema))?;
         Ok(schema_bytes)
     }
 
+    #[tracing::instrument(level = "info", skip(self, arrow_schema))]
     fn schema_to_arrow(&self, arrow_schema: SchemaRef) -> Result<Vec<u8>, Status> {
         let options = IpcWriteOptions::default();
         let pair = SchemaAsIpc::new(&arrow_schema, &options);
@@ -406,6 +420,7 @@ impl FlightSqlServiceImpl {
         Ok(schema_bytes)
     }
 
+    #[tracing::instrument(level = "info", skip(self, ctx, plan))]
     async fn enqueue_job(
         &self,
         ctx: Arc<SessionContext>,
@@ -424,6 +439,7 @@ impl FlightSqlServiceImpl {
         Ok(job_id)
     }
 
+    #[tracing::instrument(level = "info", skip(schema_bytes, fieps, num_rows, num_bytes))]
     fn create_resp(
         schema_bytes: Vec<u8>,
         fieps: Vec<FlightEndpoint>,
@@ -447,6 +463,7 @@ impl FlightSqlServiceImpl {
         Response::new(info)
     }
 
+    #[tracing::instrument(level = "info", skip(self, ctx, plan))]
     async fn execute_plan(
         &self,
         ctx: Arc<SessionContext>,
@@ -480,6 +497,7 @@ impl FlightSqlServiceImpl {
         Ok(resp)
     }
 
+    #[tracing::instrument(level = "info", skip(rb))]
     async fn record_batch_to_resp(
         rb: RecordBatch,
     ) -> Result<
@@ -501,6 +519,7 @@ impl FlightSqlServiceImpl {
         Ok(resp)
     }
 
+    #[tracing::instrument(level = "info", skip(self, data, name))]
     fn batch_to_schema_resp(
         &self,
         data: &RecordBatch,
@@ -521,6 +540,7 @@ impl FlightSqlServiceImpl {
 impl FlightSqlService for FlightSqlServiceImpl {
     type FlightService = FlightSqlServiceImpl;
 
+    #[tracing::instrument(level = "info", skip(self, request))]
     async fn do_handshake(
         &self,
         request: Request<Streaming<HandshakeRequest>>,
@@ -578,6 +598,7 @@ impl FlightSqlService for FlightSqlServiceImpl {
         Ok(resp)
     }
 
+    #[tracing::instrument(level = "info", skip(self, request, message))]
     async fn do_get_fallback(
         &self,
         request: Request<Ticket>,
@@ -646,6 +667,7 @@ impl FlightSqlService for FlightSqlServiceImpl {
         Ok(Response::new(Box::pin(stream)))
     }
 
+    #[tracing::instrument(level = "info", skip(self, _query, _request))]
     /// Get a FlightDataStream containing the data related to the supported XDBC types.
     async fn do_get_xdbc_type_info(
         &self,
@@ -656,6 +678,7 @@ impl FlightSqlService for FlightSqlServiceImpl {
         Err(Status::unimplemented("Implement do_get_xdbc_type_info"))
     }
 
+    #[tracing::instrument(level = "info", skip(self, query, request))]
     async fn get_flight_info_statement(
         &self,
         query: CommandStatementQuery,
@@ -672,6 +695,7 @@ impl FlightSqlService for FlightSqlServiceImpl {
         Ok(resp)
     }
 
+    #[tracing::instrument(level = "info", skip(self, handle, request))]
     async fn get_flight_info_prepared_statement(
         &self,
         handle: CommandPreparedStatementQuery,
@@ -689,6 +713,7 @@ impl FlightSqlService for FlightSqlServiceImpl {
         Ok(resp)
     }
 
+    #[tracing::instrument(level = "info", skip(self, _query, _request))]
     async fn get_flight_info_catalogs(
         &self,
         _query: CommandGetCatalogs,
@@ -697,6 +722,7 @@ impl FlightSqlService for FlightSqlServiceImpl {
         debug!("get_flight_info_catalogs");
         Err(Status::unimplemented("Implement get_flight_info_catalogs"))
     }
+    #[tracing::instrument(level = "info", skip(self, _query, _request))]
     async fn get_flight_info_schemas(
         &self,
         _query: CommandGetDbSchemas,
@@ -706,6 +732,7 @@ impl FlightSqlService for FlightSqlServiceImpl {
         Err(Status::unimplemented("Implement get_flight_info_schemas"))
     }
 
+    #[tracing::instrument(level = "info", skip(self, _query, request))]
     async fn get_flight_info_tables(
         &self,
         _query: CommandGetTables,
@@ -721,6 +748,7 @@ impl FlightSqlService for FlightSqlServiceImpl {
         Ok(resp)
     }
 
+    #[tracing::instrument(level = "info", skip(self, _query, _request))]
     async fn get_flight_info_table_types(
         &self,
         _query: CommandGetTableTypes,
@@ -733,6 +761,7 @@ impl FlightSqlService for FlightSqlServiceImpl {
         Ok(resp)
     }
 
+    #[tracing::instrument(level = "info", skip(self, _query, _request))]
     async fn get_flight_info_sql_info(
         &self,
         _query: CommandGetSqlInfo,
@@ -742,6 +771,7 @@ impl FlightSqlService for FlightSqlServiceImpl {
         // TODO: implement for FlightSQL JDBC to work
         Err(Status::unimplemented("Implement CommandGetSqlInfo"))
     }
+    #[tracing::instrument(level = "info", skip(self, _query, _request))]
     async fn get_flight_info_primary_keys(
         &self,
         _query: CommandGetPrimaryKeys,
@@ -752,6 +782,7 @@ impl FlightSqlService for FlightSqlServiceImpl {
             "Implement get_flight_info_primary_keys",
         ))
     }
+    #[tracing::instrument(level = "info", skip(self, _query, _request))]
     async fn get_flight_info_exported_keys(
         &self,
         _query: CommandGetExportedKeys,
@@ -762,6 +793,7 @@ impl FlightSqlService for FlightSqlServiceImpl {
             "Implement get_flight_info_exported_keys",
         ))
     }
+    #[tracing::instrument(level = "info", skip(self, _query, _request))]
     async fn get_flight_info_imported_keys(
         &self,
         _query: CommandGetImportedKeys,
@@ -772,6 +804,7 @@ impl FlightSqlService for FlightSqlServiceImpl {
             "Implement get_flight_info_imported_keys",
         ))
     }
+    #[tracing::instrument(level = "info", skip(self, _query, _request))]
     async fn get_flight_info_cross_reference(
         &self,
         _query: CommandGetCrossReference,
@@ -783,6 +816,7 @@ impl FlightSqlService for FlightSqlServiceImpl {
         ))
     }
 
+    #[tracing::instrument(level = "info", skip(self, _query, _request))]
     /// Get a FlightInfo to extract information about the supported XDBC types.
     async fn get_flight_info_xdbc_type_info(
         &self,
@@ -795,6 +829,7 @@ impl FlightSqlService for FlightSqlServiceImpl {
         ))
     }
 
+    #[tracing::instrument(level = "info", skip(self, _ticket, _request))]
     async fn do_get_statement(
         &self,
         _ticket: TicketStatementQuery,
@@ -809,6 +844,7 @@ impl FlightSqlService for FlightSqlServiceImpl {
         Err(Status::unimplemented("Implement do_get_statement"))
     }
 
+    #[tracing::instrument(level = "info", skip(self, _query, _request))]
     async fn do_get_prepared_statement(
         &self,
         _query: CommandPreparedStatementQuery,
@@ -817,6 +853,7 @@ impl FlightSqlService for FlightSqlServiceImpl {
         debug!("do_get_prepared_statement");
         Err(Status::unimplemented("Implement do_get_prepared_statement"))
     }
+    #[tracing::instrument(level = "info", skip(self, _query, _request))]
     async fn do_get_catalogs(
         &self,
         _query: CommandGetCatalogs,
@@ -825,6 +862,7 @@ impl FlightSqlService for FlightSqlServiceImpl {
         debug!("do_get_catalogs");
         Err(Status::unimplemented("Implement do_get_catalogs"))
     }
+    #[tracing::instrument(level = "info", skip(self, _query, _request))]
     async fn do_get_schemas(
         &self,
         _query: CommandGetDbSchemas,
@@ -833,6 +871,7 @@ impl FlightSqlService for FlightSqlServiceImpl {
         debug!("do_get_schemas");
         Err(Status::unimplemented("Implement do_get_schemas"))
     }
+    #[tracing::instrument(level = "info", skip(self, _query, _request))]
     async fn do_get_tables(
         &self,
         _query: CommandGetTables,
@@ -841,6 +880,7 @@ impl FlightSqlService for FlightSqlServiceImpl {
         debug!("do_get_tables");
         Err(Status::unimplemented("Implement do_get_tables"))
     }
+    #[tracing::instrument(level = "info", skip(self, _query, _request))]
     async fn do_get_table_types(
         &self,
         _query: CommandGetTableTypes,
@@ -849,6 +889,7 @@ impl FlightSqlService for FlightSqlServiceImpl {
         debug!("do_get_table_types");
         Err(Status::unimplemented("Implement do_get_table_types"))
     }
+    #[tracing::instrument(level = "info", skip(self, _query, _request))]
     async fn do_get_sql_info(
         &self,
         _query: CommandGetSqlInfo,
@@ -857,6 +898,7 @@ impl FlightSqlService for FlightSqlServiceImpl {
         debug!("do_get_sql_info");
         Err(Status::unimplemented("Implement do_get_sql_info"))
     }
+    #[tracing::instrument(level = "info", skip(self, _query, _request))]
     async fn do_get_primary_keys(
         &self,
         _query: CommandGetPrimaryKeys,
@@ -865,6 +907,7 @@ impl FlightSqlService for FlightSqlServiceImpl {
         debug!("do_get_primary_keys");
         Err(Status::unimplemented("Implement do_get_primary_keys"))
     }
+    #[tracing::instrument(level = "info", skip(self, _query, _request))]
     async fn do_get_exported_keys(
         &self,
         _query: CommandGetExportedKeys,
@@ -873,6 +916,7 @@ impl FlightSqlService for FlightSqlServiceImpl {
         debug!("do_get_exported_keys");
         Err(Status::unimplemented("Implement do_get_exported_keys"))
     }
+    #[tracing::instrument(level = "info", skip(self, _query, _request))]
     async fn do_get_imported_keys(
         &self,
         _query: CommandGetImportedKeys,
@@ -881,6 +925,7 @@ impl FlightSqlService for FlightSqlServiceImpl {
         debug!("do_get_imported_keys");
         Err(Status::unimplemented("Implement do_get_imported_keys"))
     }
+    #[tracing::instrument(level = "info", skip(self, _query, _request))]
     async fn do_get_cross_reference(
         &self,
         _query: CommandGetCrossReference,
@@ -890,6 +935,7 @@ impl FlightSqlService for FlightSqlServiceImpl {
         Err(Status::unimplemented("Implement do_get_cross_reference"))
     }
     // do_put
+    #[tracing::instrument(level = "info", skip(self, _ticket, _request))]
     async fn do_put_statement_update(
         &self,
         _ticket: CommandStatementUpdate,
@@ -898,6 +944,7 @@ impl FlightSqlService for FlightSqlServiceImpl {
         debug!("do_put_statement_update");
         Err(Status::unimplemented("Implement do_put_statement_update"))
     }
+    #[tracing::instrument(level = "info", skip(self, _query, _request))]
     async fn do_put_prepared_statement_query(
         &self,
         _query: CommandPreparedStatementQuery,
@@ -908,6 +955,7 @@ impl FlightSqlService for FlightSqlServiceImpl {
             "Implement do_put_prepared_statement_query",
         ))
     }
+    #[tracing::instrument(level = "info", skip(self, handle, request))]
     async fn do_put_prepared_statement_update(
         &self,
         handle: CommandPreparedStatementUpdate,
@@ -923,6 +971,7 @@ impl FlightSqlService for FlightSqlServiceImpl {
         Ok(-1)
     }
 
+    #[tracing::instrument(level = "info", skip(self, query, request))]
     async fn do_action_create_prepared_statement(
         &self,
         query: ActionCreatePreparedStatementRequest,
@@ -942,6 +991,7 @@ impl FlightSqlService for FlightSqlServiceImpl {
         Ok(res)
     }
 
+    #[tracing::instrument(level = "info", skip(self, handle, _request))]
     async fn do_action_close_prepared_statement(
         &self,
         handle: ActionClosePreparedStatementRequest,
@@ -958,6 +1008,7 @@ impl FlightSqlService for FlightSqlServiceImpl {
         self.remove_plan(handle)
     }
 
+    #[tracing::instrument(level = "info", skip(self, _query, _request))]
     /// Get a FlightInfo for executing a substrait plan.
     async fn get_flight_info_substrait_plan(
         &self,
@@ -970,6 +1021,7 @@ impl FlightSqlService for FlightSqlServiceImpl {
         ))
     }
 
+    #[tracing::instrument(level = "info", skip(self, _query, _request))]
     /// Execute a substrait plan
     async fn do_put_substrait_plan(
         &self,
@@ -980,6 +1032,7 @@ impl FlightSqlService for FlightSqlServiceImpl {
         Err(Status::unimplemented("Implement do_put_substrait_plan"))
     }
 
+    #[tracing::instrument(level = "info", skip(self, _query, _request))]
     /// Create a prepared substrait plan.
     async fn do_action_create_prepared_substrait_plan(
         &self,
@@ -992,6 +1045,7 @@ impl FlightSqlService for FlightSqlServiceImpl {
         ))
     }
 
+    #[tracing::instrument(level = "info", skip(self, _query, _request))]
     /// Begin a transaction
     async fn do_action_begin_transaction(
         &self,
@@ -1004,6 +1058,7 @@ impl FlightSqlService for FlightSqlServiceImpl {
         ))
     }
 
+    #[tracing::instrument(level = "info", skip(self, _query, _request))]
     /// End a transaction
     async fn do_action_end_transaction(
         &self,
@@ -1014,6 +1069,7 @@ impl FlightSqlService for FlightSqlServiceImpl {
         Err(Status::unimplemented("Implement do_action_end_transaction"))
     }
 
+    #[tracing::instrument(level = "info", skip(self, _query, _request))]
     /// Begin a savepoint
     async fn do_action_begin_savepoint(
         &self,
@@ -1024,6 +1080,7 @@ impl FlightSqlService for FlightSqlServiceImpl {
         Err(Status::unimplemented("Implement do_action_begin_savepoint"))
     }
 
+    #[tracing::instrument(level = "info", skip(self, _query, _request))]
     /// End a savepoint
     async fn do_action_end_savepoint(
         &self,
@@ -1034,6 +1091,7 @@ impl FlightSqlService for FlightSqlServiceImpl {
         Err(Status::unimplemented("Implement do_action_end_savepoint"))
     }
 
+    #[tracing::instrument(level = "info", skip(self, _query, _request))]
     /// Cancel a query
     async fn do_action_cancel_query(
         &self,
@@ -1044,6 +1102,7 @@ impl FlightSqlService for FlightSqlServiceImpl {
         Err(Status::unimplemented("Implement do_action_cancel_query"))
     }
 
+    #[tracing::instrument(level = "info", skip(self, _id, _result))]
     /// Register a new SqlInfo result, making it available when calling GetSqlInfo.
     async fn register_sql_info(&self, _id: i32, _result: &SqlInfo) {}
 }

@@ -74,18 +74,22 @@ pub struct ExplodingTableProvider;
 
 #[async_trait]
 impl TableProvider for ExplodingTableProvider {
+    #[tracing::instrument(level = "info", skip(self))]
     fn as_any(&self) -> &dyn Any {
         self
     }
 
+    #[tracing::instrument(level = "info", skip(self))]
     fn schema(&self) -> SchemaRef {
         Arc::new(Schema::empty())
     }
 
+    #[tracing::instrument(level = "info", skip(self))]
     fn table_type(&self) -> TableType {
         TableType::Base
     }
 
+    #[tracing::instrument(level = "info", skip(self, _ctx, _projection, _filters, _limit))]
     async fn scan(
         &self,
         _ctx: &SessionState,
@@ -99,6 +103,7 @@ impl TableProvider for ExplodingTableProvider {
     }
 }
 
+#[tracing::instrument(level = "info", skip(interval, iterations, cond))]
 /// Utility for running some async check multiple times to verify a condition. It will run the check
 /// at the specified interval up to a maximum of the specified iterations.
 pub async fn await_condition<Fut: Future<Output = Result<bool>>, F: Fn() -> Fut>(
@@ -122,10 +127,12 @@ pub async fn await_condition<Fut: Future<Output = Result<bool>>, F: Fn() -> Fut>
     Ok(false)
 }
 
+#[tracing::instrument(level = "info", skip())]
 pub fn test_cluster_context() -> BallistaCluster {
     BallistaCluster::new_memory(TEST_SCHEDULER_NAME, default_session_builder)
 }
 
+#[tracing::instrument(level = "info", skip(path))]
 pub async fn datafusion_test_context(path: &str) -> Result<SessionContext> {
     let default_shuffle_partitions = 2;
     let config = SessionConfig::new().with_target_partitions(default_shuffle_partitions);
@@ -143,6 +150,7 @@ pub async fn datafusion_test_context(path: &str) -> Result<SessionContext> {
     Ok(ctx)
 }
 
+#[tracing::instrument(level = "info", skip(table))]
 pub fn get_tpch_schema(table: &str) -> Schema {
     // note that the schema intentionally uses signed integers so that any generated Parquet
     // files can also be used to benchmark tools that only support signed integers, such as
@@ -251,6 +259,7 @@ impl<F> TaskRunnerFn<F>
 where
     F: Fn(String, MultiTaskDefinition) -> Vec<TaskStatus> + Send + Sync + 'static,
 {
+    #[tracing::instrument(level = "info", skip(f))]
     pub fn new(f: F) -> Self {
         Self { f }
     }
@@ -260,11 +269,13 @@ impl<F> TaskRunner for TaskRunnerFn<F>
 where
     F: Fn(String, MultiTaskDefinition) -> Vec<TaskStatus> + Send + Sync + 'static,
 {
+    #[tracing::instrument(level = "info", skip(self, executor_id, tasks))]
     fn run(&self, executor_id: String, tasks: MultiTaskDefinition) -> Vec<TaskStatus> {
         (self.f)(executor_id, tasks)
     }
 }
 
+#[tracing::instrument(level = "info", skip())]
 pub fn default_task_runner() -> impl TaskRunner {
     TaskRunnerFn::new(|executor_id: String, task: MultiTaskDefinition| {
         let mut statuses = vec![];
@@ -316,6 +327,7 @@ struct VirtualExecutor {
 }
 
 impl VirtualExecutor {
+    #[tracing::instrument(level = "info", skip(self, tasks))]
     pub fn run_tasks(&self, tasks: MultiTaskDefinition) -> Vec<TaskStatus> {
         self.runner.run(self.executor_id.clone(), tasks)
     }
@@ -327,6 +339,7 @@ pub struct BlackholeTaskLauncher {}
 
 #[async_trait]
 impl TaskLauncher for BlackholeTaskLauncher {
+    #[tracing::instrument(level = "info", skip(self, _executor, _tasks, _executor_manager))]
     async fn launch_tasks(
         &self,
         _executor: &ExecutorMetadata,
@@ -344,6 +357,7 @@ pub struct VirtualTaskLauncher {
 
 #[async_trait::async_trait]
 impl TaskLauncher for VirtualTaskLauncher {
+    #[tracing::instrument(level = "info", skip(self, executor, tasks, _executor_manager))]
     async fn launch_tasks(
         &self,
         executor: &ExecutorMetadata,
@@ -378,6 +392,7 @@ pub struct SchedulerTest {
 }
 
 impl SchedulerTest {
+    #[tracing::instrument(level = "info", skip(config, metrics_collector, num_executors, task_slots_per_executor, runner))]
     pub async fn new(
         config: SchedulerConfig,
         metrics_collector: Arc<dyn SchedulerMetricsCollector>,
@@ -461,14 +476,17 @@ impl SchedulerTest {
         })
     }
 
+    #[tracing::instrument(level = "info", skip(self))]
     pub fn pending_job_number(&self) -> usize {
         self.scheduler.pending_job_number()
     }
 
+    #[tracing::instrument(level = "info", skip(self))]
     pub fn running_job_number(&self) -> usize {
         self.scheduler.running_job_number()
     }
 
+    #[tracing::instrument(level = "info", skip(self))]
     pub async fn ctx(&self) -> Result<Arc<SessionContext>> {
         self.scheduler
             .state
@@ -477,6 +495,7 @@ impl SchedulerTest {
             .await
     }
 
+    #[tracing::instrument(level = "info", skip(self, job_id, job_name, plan))]
     pub async fn submit(
         &mut self,
         job_id: &str,
@@ -498,6 +517,7 @@ impl SchedulerTest {
         Ok(())
     }
 
+    #[tracing::instrument(level = "info", skip(self, event))]
     pub async fn post_scheduler_event(
         &self,
         event: QueryStageSchedulerEvent,
@@ -509,6 +529,7 @@ impl SchedulerTest {
             .await
     }
 
+    #[tracing::instrument(level = "info", skip(self))]
     pub async fn tick(&mut self) -> Result<()> {
         if let Some(receiver) = self.status_receiver.as_mut() {
             if let Some((executor_id, status)) = receiver.recv().await {
@@ -527,6 +548,7 @@ impl SchedulerTest {
         Ok(())
     }
 
+    #[tracing::instrument(level = "info", skip(self, job_id))]
     pub async fn cancel(&self, job_id: &str) -> Result<()> {
         self.scheduler
             .query_stage_event_loop
@@ -535,6 +557,7 @@ impl SchedulerTest {
             .await
     }
 
+    #[tracing::instrument(level = "info", skip(self, job_id, timeout_ms))]
     pub async fn await_completion_timeout(
         &self,
         job_id: &str,
@@ -575,6 +598,7 @@ impl SchedulerTest {
         final_status
     }
 
+    #[tracing::instrument(level = "info", skip(self, job_id))]
     pub async fn await_completion(&self, job_id: &str) -> Result<JobStatus> {
         let final_status: Result<JobStatus> = loop {
             let status = self
@@ -603,6 +627,7 @@ impl SchedulerTest {
         final_status
     }
 
+    #[tracing::instrument(level = "info", skip(self, job_id, job_name, plan))]
     pub async fn run(
         &mut self,
         job_id: &str,
@@ -669,6 +694,7 @@ pub enum MetricEvent {
 }
 
 impl MetricEvent {
+    #[tracing::instrument(level = "info", skip(self))]
     pub fn job_id(&self) -> &str {
         match self {
             MetricEvent::Submitted(job, _, _) => job.as_str(),
@@ -685,6 +711,7 @@ pub struct TestMetricsCollector {
 }
 
 impl TestMetricsCollector {
+    #[tracing::instrument(level = "info", skip(self, job_id))]
     pub fn job_events(&self, job_id: &str) -> Vec<MetricEvent> {
         let guard = self.events.lock();
 
@@ -702,6 +729,7 @@ impl TestMetricsCollector {
 }
 
 impl SchedulerMetricsCollector for TestMetricsCollector {
+    #[tracing::instrument(level = "info", skip(self, job_id, queued_at, submitted_at))]
     fn record_submitted(&self, job_id: &str, queued_at: u64, submitted_at: u64) {
         let mut guard = self.events.lock();
         guard.push(MetricEvent::Submitted(
@@ -711,6 +739,7 @@ impl SchedulerMetricsCollector for TestMetricsCollector {
         ));
     }
 
+    #[tracing::instrument(level = "info", skip(self, job_id, queued_at, completed_at))]
     fn record_completed(&self, job_id: &str, queued_at: u64, completed_at: u64) {
         let mut guard = self.events.lock();
         guard.push(MetricEvent::Completed(
@@ -720,23 +749,28 @@ impl SchedulerMetricsCollector for TestMetricsCollector {
         ));
     }
 
+    #[tracing::instrument(level = "info", skip(self, job_id, queued_at, failed_at))]
     fn record_failed(&self, job_id: &str, queued_at: u64, failed_at: u64) {
         let mut guard = self.events.lock();
         guard.push(MetricEvent::Failed(job_id.to_owned(), queued_at, failed_at));
     }
 
+    #[tracing::instrument(level = "info", skip(self, job_id))]
     fn record_cancelled(&self, job_id: &str) {
         let mut guard = self.events.lock();
         guard.push(MetricEvent::Cancelled(job_id.to_owned()));
     }
 
+    #[tracing::instrument(level = "info", skip(self, _value))]
     fn set_pending_tasks_queue_size(&self, _value: u64) {}
 
+    #[tracing::instrument(level = "info", skip(self))]
     fn gather_metrics(&self) -> Result<Option<(Vec<u8>, String)>> {
         Ok(None)
     }
 }
 
+#[tracing::instrument(level = "info", skip(job_id, collector))]
 pub fn assert_submitted_event(job_id: &str, collector: &TestMetricsCollector) {
     let found = collector
         .job_events(job_id)
@@ -746,6 +780,7 @@ pub fn assert_submitted_event(job_id: &str, collector: &TestMetricsCollector) {
     assert!(found, "{}", "Expected submitted event for job {job_id}");
 }
 
+#[tracing::instrument(level = "info", skip(job_id, collector))]
 pub fn assert_no_submitted_event(job_id: &str, collector: &TestMetricsCollector) {
     let found = collector
         .job_events(job_id)
@@ -755,6 +790,7 @@ pub fn assert_no_submitted_event(job_id: &str, collector: &TestMetricsCollector)
     assert!(!found, "{}", "Expected no submitted event for job {job_id}");
 }
 
+#[tracing::instrument(level = "info", skip(job_id, collector))]
 pub fn assert_completed_event(job_id: &str, collector: &TestMetricsCollector) {
     let found = collector
         .job_events(job_id)
@@ -764,6 +800,7 @@ pub fn assert_completed_event(job_id: &str, collector: &TestMetricsCollector) {
     assert!(found, "{}", "Expected completed event for job {job_id}");
 }
 
+#[tracing::instrument(level = "info", skip(job_id, collector))]
 pub fn assert_cancelled_event(job_id: &str, collector: &TestMetricsCollector) {
     let found = collector
         .job_events(job_id)
@@ -773,6 +810,7 @@ pub fn assert_cancelled_event(job_id: &str, collector: &TestMetricsCollector) {
     assert!(found, "{}", "Expected cancelled event for job {job_id}");
 }
 
+#[tracing::instrument(level = "info", skip(job_id, collector))]
 pub fn assert_failed_event(job_id: &str, collector: &TestMetricsCollector) {
     let found = collector
         .job_events(job_id)
@@ -782,10 +820,12 @@ pub fn assert_failed_event(job_id: &str, collector: &TestMetricsCollector) {
     assert!(found, "{}", "Expected failed event for job {job_id}");
 }
 
+#[tracing::instrument(level = "info", skip(partition))]
 pub async fn test_aggregation_plan(partition: usize) -> ExecutionGraph {
     test_aggregation_plan_with_job_id(partition, "job").await
 }
 
+#[tracing::instrument(level = "info", skip(partition, job_id))]
 pub async fn test_aggregation_plan_with_job_id(
     partition: usize,
     job_id: &str,
@@ -821,6 +861,7 @@ pub async fn test_aggregation_plan_with_job_id(
     ExecutionGraph::new("localhost:50050", job_id, "", "session", plan, 0).unwrap()
 }
 
+#[tracing::instrument(level = "info", skip(partition))]
 pub async fn test_two_aggregations_plan(partition: usize) -> ExecutionGraph {
     let config = SessionConfig::new().with_target_partitions(partition);
     let ctx = Arc::new(SessionContext::new_with_config(config));
@@ -856,6 +897,7 @@ pub async fn test_two_aggregations_plan(partition: usize) -> ExecutionGraph {
     ExecutionGraph::new("localhost:50050", "job", "", "session", plan, 0).unwrap()
 }
 
+#[tracing::instrument(level = "info", skip(partition))]
 pub async fn test_coalesce_plan(partition: usize) -> ExecutionGraph {
     let config = SessionConfig::new().with_target_partitions(partition);
     let ctx = Arc::new(SessionContext::new_with_config(config));
@@ -883,6 +925,7 @@ pub async fn test_coalesce_plan(partition: usize) -> ExecutionGraph {
     ExecutionGraph::new("localhost:50050", "job", "", "session", plan, 0).unwrap()
 }
 
+#[tracing::instrument(level = "info", skip(partition))]
 pub async fn test_join_plan(partition: usize) -> ExecutionGraph {
     let mut config = SessionConfig::new().with_target_partitions(partition);
     config
@@ -936,6 +979,7 @@ pub async fn test_join_plan(partition: usize) -> ExecutionGraph {
     graph
 }
 
+#[tracing::instrument(level = "info", skip(partition))]
 pub async fn test_union_all_plan(partition: usize) -> ExecutionGraph {
     let config = SessionConfig::new().with_target_partitions(partition);
     let ctx = Arc::new(SessionContext::new_with_config(config));
@@ -968,6 +1012,7 @@ pub async fn test_union_all_plan(partition: usize) -> ExecutionGraph {
     graph
 }
 
+#[tracing::instrument(level = "info", skip(partition))]
 pub async fn test_union_plan(partition: usize) -> ExecutionGraph {
     let config = SessionConfig::new().with_target_partitions(partition);
     let ctx = Arc::new(SessionContext::new_with_config(config));
@@ -1000,6 +1045,7 @@ pub async fn test_union_plan(partition: usize) -> ExecutionGraph {
     graph
 }
 
+#[tracing::instrument(level = "info", skip(executor_id))]
 pub fn mock_executor(executor_id: String) -> ExecutorMetadata {
     ExecutorMetadata {
         id: executor_id,
@@ -1010,6 +1056,7 @@ pub fn mock_executor(executor_id: String) -> ExecutorMetadata {
     }
 }
 
+#[tracing::instrument(level = "info", skip(task, executor_id))]
 pub fn mock_completed_task(task: TaskDescription, executor_id: &str) -> TaskStatus {
     let mut partitions: Vec<protobuf::ShuffleWritePartition> = vec![];
 
@@ -1048,6 +1095,7 @@ pub fn mock_completed_task(task: TaskDescription, executor_id: &str) -> TaskStat
     }
 }
 
+#[tracing::instrument(level = "info", skip(task, failed_task))]
 pub fn mock_failed_task(task: TaskDescription, failed_task: FailedTask) -> TaskStatus {
     let mut partitions: Vec<protobuf::ShuffleWritePartition> = vec![];
 

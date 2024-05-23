@@ -59,6 +59,7 @@ struct State {
 const WORKER_PRIORITY: i32 = 10;
 
 impl std::fmt::Debug for DedicatedExecutor {
+    #[tracing::instrument(level = "info", skip(self, f))]
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let state = self.state.lock();
 
@@ -84,6 +85,7 @@ impl std::fmt::Debug for DedicatedExecutor {
 }
 
 impl DedicatedExecutor {
+    #[tracing::instrument(level = "info", skip(thread_name, num_threads))]
     /// https://stackoverflow.com/questions/62536566
     /// Creates a new `DedicatedExecutor` with a dedicated tokio
     /// runtime that is separate from the `[tokio::main]` threadpool.
@@ -130,6 +132,7 @@ impl DedicatedExecutor {
         }
     }
 
+    #[tracing::instrument(level = "info", skip(self, task))]
     /// Runs the specified Future (and any tasks it spawns) on the
     /// `DedicatedExecutor`.
     ///
@@ -162,6 +165,7 @@ impl DedicatedExecutor {
         rx
     }
 
+    #[tracing::instrument(level = "info", skip(self))]
     /// signals shutdown of this executor and any Clones
     #[allow(dead_code)]
     pub fn shutdown(&self) {
@@ -172,6 +176,7 @@ impl DedicatedExecutor {
         state.requests = None;
     }
 
+    #[tracing::instrument(level = "info", skip(self))]
     /// Stops all subsequent task executions, and waits for the worker
     /// thread to complete. Note this will shutdown all clones of this
     /// `DedicatedExecutor` as well.
@@ -197,11 +202,13 @@ impl DedicatedExecutor {
     }
 }
 
+#[tracing::instrument(level = "info", skip(prio))]
 #[cfg(unix)]
 fn set_current_thread_priority(prio: i32) {
     unsafe { libc::setpriority(0, 0, prio) };
 }
 
+#[tracing::instrument(level = "info", skip(_prio))]
 #[cfg(not(unix))]
 fn set_current_thread_priority(_prio: i32) {
     warn!("Setting worker thread priority not supported on this platform");
@@ -212,6 +219,7 @@ mod tests {
     use super::*;
     use std::sync::{Arc, Barrier};
 
+    #[tracing::instrument(level = "info", skip())]
     #[cfg(unix)]
     fn get_current_thread_priority() -> i32 {
         // on linux setpriority sets the current thread's priority
@@ -219,6 +227,7 @@ mod tests {
         unsafe { libc::getpriority(0, 0) }
     }
 
+    #[tracing::instrument(level = "info", skip())]
     #[cfg(not(unix))]
     fn get_current_thread_priority() -> i32 {
         WORKER_PRIORITY
@@ -370,6 +379,7 @@ mod tests {
         exec.join();
     }
 
+    #[tracing::instrument(level = "info", skip(result, barrier))]
     /// Wait for the barrier and then return `result`
     async fn do_work(result: usize, barrier: Arc<Barrier>) -> usize {
         barrier.wait();

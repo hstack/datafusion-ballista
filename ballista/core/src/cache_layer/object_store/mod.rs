@@ -40,16 +40,19 @@ pub struct ObjectStoreWithKey {
 }
 
 impl ObjectStoreWithKey {
+    #[tracing::instrument(level = "info", skip(key, inner))]
     pub fn new(key: String, inner: Arc<dyn ObjectStore>) -> Self {
         Self { key, inner }
     }
 
+    #[tracing::instrument(level = "info", skip(self))]
     pub fn key(&self) -> &str {
         &self.key
     }
 }
 
 impl Display for ObjectStoreWithKey {
+    #[tracing::instrument(level = "info", skip(self, f))]
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         write!(
             f,
@@ -61,6 +64,7 @@ impl Display for ObjectStoreWithKey {
 
 #[async_trait]
 impl ObjectStore for ObjectStoreWithKey {
+    #[tracing::instrument(level = "info", skip(self, location, bytes))]
     async fn put(
         &self,
         location: &Path,
@@ -69,6 +73,7 @@ impl ObjectStore for ObjectStoreWithKey {
         self.inner.put(location, bytes).await
     }
 
+    #[tracing::instrument(level = "info", skip(self, location, bytes, opts))]
     async fn put_opts(
         &self,
         location: &Path,
@@ -78,6 +83,7 @@ impl ObjectStore for ObjectStoreWithKey {
         self.inner.put_opts(location, bytes, opts).await
     }
 
+    #[tracing::instrument(level = "info", skip(self, location))]
     async fn put_multipart(
         &self,
         location: &Path,
@@ -85,6 +91,7 @@ impl ObjectStore for ObjectStoreWithKey {
         self.inner.put_multipart(location).await
     }
 
+    #[tracing::instrument(level = "info", skip(self, location, multipart_id))]
     async fn abort_multipart(
         &self,
         location: &Path,
@@ -93,10 +100,12 @@ impl ObjectStore for ObjectStoreWithKey {
         self.inner.abort_multipart(location, multipart_id).await
     }
 
+    #[tracing::instrument(level = "info", skip(self, location))]
     async fn get(&self, location: &Path) -> object_store::Result<GetResult> {
         self.inner.get(location).await
     }
 
+    #[tracing::instrument(level = "info", skip(self, location, options))]
     async fn get_opts(
         &self,
         location: &Path,
@@ -105,6 +114,7 @@ impl ObjectStore for ObjectStoreWithKey {
         self.inner.get_opts(location, options).await
     }
 
+    #[tracing::instrument(level = "info", skip(self, location, range))]
     async fn get_range(
         &self,
         location: &Path,
@@ -113,6 +123,7 @@ impl ObjectStore for ObjectStoreWithKey {
         self.inner.get_range(location, range).await
     }
 
+    #[tracing::instrument(level = "info", skip(self, location, ranges))]
     async fn get_ranges(
         &self,
         location: &Path,
@@ -121,14 +132,17 @@ impl ObjectStore for ObjectStoreWithKey {
         self.inner.get_ranges(location, ranges).await
     }
 
+    #[tracing::instrument(level = "info", skip(self, location))]
     async fn head(&self, location: &Path) -> object_store::Result<ObjectMeta> {
         self.inner.head(location).await
     }
 
+    #[tracing::instrument(level = "info", skip(self, location))]
     async fn delete(&self, location: &Path) -> object_store::Result<()> {
         self.inner.delete(location).await
     }
 
+    #[tracing::instrument(level = "info", skip(self, prefix))]
     fn list(
         &self,
         prefix: Option<&Path>,
@@ -136,6 +150,7 @@ impl ObjectStore for ObjectStoreWithKey {
         self.inner.list(prefix)
     }
 
+    #[tracing::instrument(level = "info", skip(self, prefix))]
     async fn list_with_delimiter(
         &self,
         prefix: Option<&Path>,
@@ -143,14 +158,17 @@ impl ObjectStore for ObjectStoreWithKey {
         self.inner.list_with_delimiter(prefix).await
     }
 
+    #[tracing::instrument(level = "info", skip(self, from, to))]
     async fn copy(&self, from: &Path, to: &Path) -> object_store::Result<()> {
         self.inner.copy(from, to).await
     }
 
+    #[tracing::instrument(level = "info", skip(self, from, to))]
     async fn rename(&self, from: &Path, to: &Path) -> object_store::Result<()> {
         self.inner.rename(from, to).await
     }
 
+    #[tracing::instrument(level = "info", skip(self, from, to))]
     async fn copy_if_not_exists(
         &self,
         from: &Path,
@@ -159,6 +177,7 @@ impl ObjectStore for ObjectStoreWithKey {
         self.inner.copy_if_not_exists(from, to).await
     }
 
+    #[tracing::instrument(level = "info", skip(self, from, to))]
     async fn rename_if_not_exists(
         &self,
         from: &Path,

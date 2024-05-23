@@ -50,6 +50,7 @@ pub struct EventLoop<E> {
 }
 
 impl<E: Send + 'static> EventLoop<E> {
+    #[tracing::instrument(level = "info", skip(name, buffer_size, action))]
     pub fn new(
         name: String,
         buffer_size: usize,
@@ -64,6 +65,7 @@ impl<E: Send + 'static> EventLoop<E> {
         }
     }
 
+    #[tracing::instrument(level = "info", skip(self, rx_event))]
     fn run(&self, mut rx_event: mpsc::Receiver<E>) {
         assert!(
             self.tx_event.is_some(),
@@ -90,6 +92,7 @@ impl<E: Send + 'static> EventLoop<E> {
         });
     }
 
+    #[tracing::instrument(level = "info", skip(self))]
     pub fn start(&mut self) -> Result<()> {
         if self.stopped.load(Ordering::SeqCst) {
             return Err(BallistaError::General(format!(
@@ -106,6 +109,7 @@ impl<E: Send + 'static> EventLoop<E> {
         Ok(())
     }
 
+    #[tracing::instrument(level = "info", skip(self))]
     pub fn stop(&self) {
         if !self.stopped.swap(true, Ordering::SeqCst) {
             self.action.on_stop();
@@ -114,6 +118,7 @@ impl<E: Send + 'static> EventLoop<E> {
         }
     }
 
+    #[tracing::instrument(level = "info", skip(self))]
     pub fn get_sender(&self) -> Result<EventSender<E>> {
         Ok(EventSender {
             tx_event: self.tx_event.as_ref().cloned().ok_or_else(|| {
@@ -129,10 +134,12 @@ pub struct EventSender<E> {
 }
 
 impl<E> EventSender<E> {
+    #[tracing::instrument(level = "info", skip(tx_event))]
     pub fn new(tx_event: mpsc::Sender<E>) -> Self {
         Self { tx_event }
     }
 
+    #[tracing::instrument(level = "info", skip(self, event))]
     pub async fn post_event(&self, event: E) -> Result<()> {
         self.tx_event
             .send(event)

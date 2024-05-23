@@ -32,6 +32,7 @@ const RUNNING_JOBS_METRIC_NAME: &str = "running_jobs";
 impl<T: 'static + AsLogicalPlan, U: 'static + AsExecutionPlan> ExternalScaler
     for SchedulerServer<T, U>
 {
+    #[tracing::instrument(level = "info", skip(self, _request))]
     async fn is_active(
         &self,
         _request: Request<ScaledObjectRef>,
@@ -39,6 +40,7 @@ impl<T: 'static + AsLogicalPlan, U: 'static + AsExecutionPlan> ExternalScaler
         Ok(Response::new(IsActiveResponse { result: true }))
     }
 
+    #[tracing::instrument(level = "info", skip(self, _request))]
     async fn get_metric_spec(
         &self,
         _request: Request<ScaledObjectRef>,
@@ -51,6 +53,7 @@ impl<T: 'static + AsLogicalPlan, U: 'static + AsExecutionPlan> ExternalScaler
         }))
     }
 
+    #[tracing::instrument(level = "info", skip(self, _request))]
     async fn get_metrics(
         &self,
         _request: Request<GetMetricsRequest>,
