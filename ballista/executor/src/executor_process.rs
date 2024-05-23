@@ -26,7 +26,7 @@ use std::{env, io};
 use anyhow::{Context, Result};
 use arrow_flight::flight_service_server::FlightServiceServer;
 use futures::stream::FuturesUnordered;
-use futures::StreamExt;
+use futures::{SinkExt, StreamExt};
 use log::{error, info, warn};
 use tempfile::TempDir;
 use tokio::fs::DirEntry;
@@ -39,6 +39,9 @@ use uuid::Uuid;
 
 use datafusion::execution::runtime_env::{RuntimeConfig, RuntimeEnv};
 use datafusion_proto::protobuf::{LogicalPlanNode, PhysicalPlanNode};
+use opentelemetry_sdk::runtime;
+use tracing_subscriber::layer::SubscriberExt;
+use tracing_subscriber::util::SubscriberInitExt;
 
 #[cfg(not(windows))]
 use ballista_core::cache_layer::{
@@ -133,13 +136,34 @@ pub async fn start_executor_process(opt: Arc<ExecutorProcessConfig>) -> Result<(
             .init();
     } else {
         // Console layer
-        tracing_subscriber::fmt()
+        let fmt_layer = tracing_subscriber::fmt::layer()
             .with_ansi(false)
             .with_thread_names(opt.print_thread_info)
             .with_thread_ids(opt.print_thread_info)
-            .with_writer(io::stdout)
-            .with_env_filter(log_filter)
-            .init();
+            .with_writer(io::stdout);
+            // .with_env_filter(log_filter)
+            // .init();
+
+        // log level filtering here
+        let filter_layer = EnvFilter::try_from_default_env()
+            .or_else(|_| EnvFilter::try_new("info"))
+            .unwrap();
+
+        let registry = tracing_subscriber::registry()
+            .with(filter_layer)
+            .with(fmt_layer);
+
+        let otlp_exporter = opentelemetry_otlp::new_exporter().tonic();
+
+        let tracer = opentelemetry_otlp::new_pipeline()
+            .tracing()
+            .with_exporter(otlp_exporter)
+            // .install_simple()
+            .install_batch(runtime::Tokio)
+            .unwrap();
+
+        let otel_layer = tracing_opentelemetry::layer().with_tracer(tracer);
+        registry.with(otel_layer).init();
     }
 
     let addr = format!("{}:{}", opt.bind_host, opt.port);

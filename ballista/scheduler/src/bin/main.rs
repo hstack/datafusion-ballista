@@ -21,6 +21,7 @@ use std::sync::Arc;
 use std::{env, io};
 
 use anyhow::Result;
+use opentelemetry_sdk::runtime;
 
 use crate::config::{Config, ResultExt};
 use ballista_core::config::LogRotationPolicy;
@@ -32,6 +33,8 @@ use ballista_scheduler::config::{
 };
 use ballista_scheduler::scheduler_process::start_server;
 use tracing_subscriber::EnvFilter;
+use tracing_subscriber::layer::SubscriberExt;
+use tracing_subscriber::util::SubscriberInitExt;
 
 #[macro_use]
 extern crate configure_me;
@@ -94,13 +97,34 @@ async fn main() -> Result<()> {
             .init();
     } else {
         // Console layer
-        tracing_subscriber::fmt()
+        let fmt_layer = tracing_subscriber::fmt::layer()
             .with_ansi(false)
             .with_thread_names(print_thread_info)
             .with_thread_ids(print_thread_info)
-            .with_writer(io::stdout)
-            .with_env_filter(log_filter)
-            .init();
+            .with_writer(io::stdout);
+            // .with_env_filter(log_filter)
+            // .init();
+
+        // log level filtering here
+        let filter_layer = EnvFilter::try_from_default_env()
+            .or_else(|_| EnvFilter::try_new("info"))
+            .unwrap();
+
+        let registry = tracing_subscriber::registry()
+            .with(filter_layer)
+            .with(fmt_layer);
+
+        let otlp_exporter = opentelemetry_otlp::new_exporter().tonic();
+
+        let tracer = opentelemetry_otlp::new_pipeline()
+            .tracing()
+            .with_exporter(otlp_exporter)
+            // .install_simple()
+            .install_batch(runtime::Tokio)
+            .unwrap();
+
+        let otel_layer = tracing_opentelemetry::layer().with_tracer(tracer);
+        registry.with(otel_layer).init();
     }
 
     let addr = format!("{}:{}", opt.bind_host, opt.bind_port);

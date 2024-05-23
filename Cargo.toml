@@ -48,9 +48,15 @@ tonic-build = { version = "0.11.0", default-features = false, features = [
     "transport",
     "prost"
 ] }
-tracing = "0.1.36"
+tracing = "0.1.40"
 tracing-appender = "0.2.2"
-tracing-subscriber = { version = "0.3.15", features = ["env-filter"] }
+tracing-subscriber = { version = "0.3.18", features = ["env-filter"] }
+
+# the versions need to be staggered like this, or it won't compile
+opentelemetry = "0.22.0"
+opentelemetry_sdk = { version = "0.22.0", features = ["rt-tokio"] }
+opentelemetry-otlp = "0.15.0"
+tracing-opentelemetry = "0.23.0"
 
 [profile.idea]
 inherits = "dev"
