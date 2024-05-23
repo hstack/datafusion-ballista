@@ -48,9 +48,15 @@ tonic-build = { version = "0.11.0", default-features = false, features = [
     "transport",
     "prost"
 ] }
-tracing = "0.1.36"
+tracing = "0.1.40"
 tracing-appender = "0.2.2"
-tracing-subscriber = { version = "0.3.15", features = ["env-filter"] }
+tracing-subscriber = { version = "0.3.18", features = ["env-filter"] }
+
+# the versions need to be staggered like this, or it won't compile
+opentelemetry = "0.22.0"
+opentelemetry_sdk = { version = "0.22.0", features = ["rt-tokio"] }
+opentelemetry-otlp = "0.15.0"
+tracing-opentelemetry = "0.23.0"
 
 [profile.idea]
 inherits = "dev"
@@ -90,19 +96,19 @@ debug = 2
 split-debuginfo = "packed"
 
 [patch.crates-io]
-datafusion = { git = 'https://github.com/hstack/arrow-datafusion.git', branch = 'branch-38' }
-datafusion-common = { git = 'https://github.com/hstack/arrow-datafusion.git', branch = 'branch-38' }
-datafusion-common-runtime = { git = 'https://github.com/hstack/arrow-datafusion.git', branch = 'branch-38' }
-datafusion-execution = { git = 'https://github.com/hstack/arrow-datafusion.git', branch = 'branch-38' }
-datafusion-expr = { git = 'https://github.com/hstack/arrow-datafusion.git', branch = 'branch-38' }
-datafusion-functions = { git = 'https://github.com/hstack/arrow-datafusion.git', branch = 'branch-38' }
-datafusion-functions-array = { git = 'https://github.com/hstack/arrow-datafusion.git', branch = 'branch-38' }
-datafusion-optimizer = { git = 'https://github.com/hstack/arrow-datafusion.git', branch = 'branch-38' }
-datafusion-physical-expr = { git = 'https://github.com/hstack/arrow-datafusion.git', branch = 'branch-38' }
-datafusion-physical-plan = { git = 'https://github.com/hstack/arrow-datafusion.git', branch = 'branch-38' }
-datafusion-proto = { git = 'https://github.com/hstack/arrow-datafusion.git', branch = 'branch-38' }
-datafusion-sql = { git = 'https://github.com/hstack/arrow-datafusion.git', branch = 'branch-38' }
-datafusion-substrait = { git = 'https://github.com/hstack/arrow-datafusion.git', branch = 'branch-38' }
+datafusion = { git = 'https://github.com/hstack/arrow-datafusion.git', branch = 'df-tracing' }
+datafusion-common = { git = 'https://github.com/hstack/arrow-datafusion.git', branch = 'df-tracing' }
+datafusion-common-runtime = { git = 'https://github.com/hstack/arrow-datafusion.git', branch = 'df-tracing' }
+datafusion-execution = { git = 'https://github.com/hstack/arrow-datafusion.git', branch = 'df-tracing' }
+datafusion-expr = { git = 'https://github.com/hstack/arrow-datafusion.git', branch = 'df-tracing' }
+datafusion-functions = { git = 'https://github.com/hstack/arrow-datafusion.git', branch = 'df-tracing' }
+datafusion-functions-array = { git = 'https://github.com/hstack/arrow-datafusion.git', branch = 'df-tracing' }
+datafusion-optimizer = { git = 'https://github.com/hstack/arrow-datafusion.git', branch = 'df-tracing' }
+datafusion-physical-expr = { git = 'https://github.com/hstack/arrow-datafusion.git', branch = 'df-tracing' }
+datafusion-physical-plan = { git = 'https://github.com/hstack/arrow-datafusion.git', branch = 'df-tracing' }
+datafusion-proto = { git = 'https://github.com/hstack/arrow-datafusion.git', branch = 'df-tracing' }
+datafusion-sql = { git = 'https://github.com/hstack/arrow-datafusion.git', branch = 'df-tracing' }
+datafusion-substrait = { git = 'https://github.com/hstack/arrow-datafusion.git', branch = 'df-tracing' }
 deltalake = { git = 'https://github.com/hstack/delta-rs.git', branch = 'delta-ballista-interaction-38' }
 deltalake-aws = { git = 'https://github.com/hstack/delta-rs.git', branch = 'delta-ballista-interaction-38' }
 # for local development, you can uncomment the below
