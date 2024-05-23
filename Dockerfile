@@ -29,7 +29,7 @@ RUN cargo build --bin ballista-scheduler --bin ballista-executor --bin ballista-
 FROM debian:bookworm-slim AS runtime
 RUN <<eof
   #!/bin/bash
-  apt-get update && apt-get -y install curl psutils less awscli python3-pip
+  apt-get update && apt-get -y install curl netcat-traditional psutils less awscli python3-pip
 eof
 
 COPY --from=builder /app/target/debug/ballista-scheduler /usr/local/bin/ballista-scheduler
