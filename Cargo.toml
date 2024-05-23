@@ -85,7 +85,9 @@ panic = 'unwind'
 rpath = false
 
 [profile.dev]
-debug = 1
+opt-level = 1
+debug = 2
+split-debuginfo = "packed"
 
 [patch.crates-io]
 datafusion = { git = 'https://github.com/hstack/arrow-datafusion.git', branch = 'branch-38' }
