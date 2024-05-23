@@ -1,13 +1,14 @@
 # syntax = docker/dockerfile:1.7
 
-FROM --platform=linux/amd64 docker-cja-arrow-dev.dr-uw2.adobeitc.com/cargo-chef:0.1.66-rust-slim-bookworm AS chef
+#FROM lukemathwalker/cargo-chef:latest-rust-1 AS chef
+FROM docker-cja-arrow-dev.dr-uw2.adobeitc.com/cargo-chef:0.1.66-rust-slim-bookworm AS chef
 WORKDIR /app
 
-FROM --platform=linux/amd64 chef AS planner
+FROM chef AS planner
 COPY . .
 RUN cargo chef prepare --recipe-path recipe.json
 
-FROM --platform=linux/amd64 chef AS builder 
+FROM chef AS builder 
 COPY --from=planner /app/recipe.json recipe.json
 RUN <<eof
 #!/bin/bash
@@ -25,7 +26,7 @@ RUN cargo chef cook --recipe-path recipe.json
 COPY . .
 RUN cargo build --bin ballista-scheduler --bin ballista-executor --bin ballista-cli
 
-FROM --platform=linux/amd64 debian:bookworm-slim AS runtime
+FROM debian:bookworm-slim AS runtime
 RUN <<eof
   #!/bin/bash
   apt-get update && apt-get -y install curl psutils less awscli python3-pip

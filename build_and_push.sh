@@ -3,6 +3,7 @@ set -x
 set -e
 
 VERSION=${VERSION:-latest} #"MR202008"
+PLATFORM=${PLATFORM:-"linux/amd64"} # build for ethos by default, replace with linux/arm64 for local macos builds
 IMAGE_REPO_ADDRESS=${IMAGE_REPO_ADDRESS:-docker-cja-arrow-dev.dr-uw2.adobeitc.com}
 DOCKER_BUILD_OPTIONS=${DOCKER_BUILD_OPTIONS:-""}
 
@@ -23,6 +24,7 @@ IMG="ballista:${VERSION}"
 
 docker build $DOCKER_BUILD_OPTIONS \
   --progress=plain \
+  --platform=${PLATFORM} \
   --secret id=artifactory_user,src=./artifactory_user \
   --secret id=artifactory_api_token,src=./artifactory_api_token \
   -t ${IMG} .
