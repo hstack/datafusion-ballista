@@ -41,7 +41,6 @@ where
     type Data = A::Data;
     type Error = Error;
 
-    #[tracing::instrument(level = "info", skip(self, cx))]
     fn poll_data(
         self: Pin<&mut Self>,
         cx: &mut TaskContext<'_>,
@@ -52,7 +51,6 @@ where
         }
     }
 
-    #[tracing::instrument(level = "info", skip(self, cx))]
     fn poll_trailers(
         self: Pin<&mut Self>,
         cx: &mut TaskContext<'_>,
@@ -63,7 +61,6 @@ where
         }
     }
 
-    #[tracing::instrument(level = "info", skip(self))]
     fn is_end_stream(&self) -> bool {
         match self {
             EitherBody::Left(b) => b.is_end_stream(),
@@ -72,14 +69,12 @@ where
     }
 }
 
-#[tracing::instrument(level = "info", skip(err))]
 fn map_option_err<T, U: Into<Error>>(
     err: Option<Result<T, U>>,
 ) -> Option<Result<T, Error>> {
     err.map(|e| e.map_err(Into::into))
 }
 
-#[tracing::instrument(level = "info", skip(db))]
 fn with_data_server<T: AsLogicalPlan + Clone, U: 'static + AsExecutionPlan>(
     db: SchedulerServer<T, U>,
 ) -> impl Filter<Extract = (SchedulerServer<T, U>,), Error = std::convert::Infallible> + Clone
@@ -87,7 +82,6 @@ fn with_data_server<T: AsLogicalPlan + Clone, U: 'static + AsExecutionPlan>(
     warp::any().map(move || db.clone())
 }
 
-#[tracing::instrument(level = "info", skip(scheduler_server))]
 pub fn get_routes<T: AsLogicalPlan + Clone, U: 'static + AsExecutionPlan>(
     scheduler_server: SchedulerServer<T, U>,
 ) -> BoxedFilter<(impl Reply,)> {

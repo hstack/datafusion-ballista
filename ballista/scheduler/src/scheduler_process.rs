@@ -42,7 +42,6 @@ use crate::metrics::default_metrics_collector;
 use crate::scheduler_server::externalscaler::external_scaler_server::ExternalScalerServer;
 use crate::scheduler_server::SchedulerServer;
 
-#[tracing::instrument(level = "info", skip(cluster, addr, config))]
 pub async fn start_server(
     cluster: BallistaCluster,
     addr: SocketAddr,

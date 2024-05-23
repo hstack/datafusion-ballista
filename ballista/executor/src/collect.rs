@@ -40,7 +40,6 @@ pub struct CollectExec {
 }
 
 impl CollectExec {
-    #[tracing::instrument(level = "info", skip(plan))]
     pub fn new(plan: Arc<dyn ExecutionPlan>) -> Self {
         let schema_ref = plan.schema().clone();
         Self {
@@ -49,7 +48,6 @@ impl CollectExec {
         }
     }
 
-    #[tracing::instrument(level = "info", skip(schema))]
     /// This function creates the cache object that stores the plan properties such as schema, equivalence properties, ordering, partitioning, etc.
     fn compute_properties(
         schema: SchemaRef,
@@ -66,7 +64,6 @@ impl CollectExec {
 }
 
 impl DisplayAs for CollectExec {
-    #[tracing::instrument(level = "info", skip(self, t, f))]
     fn fmt_as(
         &self,
         t: DisplayFormatType,
@@ -81,25 +78,20 @@ impl DisplayAs for CollectExec {
 }
 
 impl ExecutionPlan for CollectExec {
-    #[tracing::instrument(level = "info", skip(self))]
     fn as_any(&self) -> &dyn Any {
         self
     }
 
-    #[tracing::instrument(level = "info", skip(self))]
     fn schema(&self) -> SchemaRef {
         self.plan.schema()
     }
 
-    #[tracing::instrument(level = "info", skip(self))]
     fn properties(&self) -> &PlanProperties { &self.cache }
 
-    #[tracing::instrument(level = "info", skip(self))]
     fn children(&self) -> Vec<Arc<dyn ExecutionPlan>> {
         vec![self.plan.clone()]
     }
 
-    #[tracing::instrument(level = "info", skip(self, _children))]
     fn with_new_children(
         self: Arc<Self>,
         _children: Vec<Arc<dyn ExecutionPlan>>,
@@ -107,7 +99,6 @@ impl ExecutionPlan for CollectExec {
         unimplemented!()
     }
 
-    #[tracing::instrument(level = "info", skip(self, partition, context))]
     fn execute(
         &self,
         partition: usize,
@@ -127,7 +118,6 @@ impl ExecutionPlan for CollectExec {
         }))
     }
 
-    #[tracing::instrument(level = "info", skip(self))]
     fn statistics(&self) -> Result<Statistics> {
         self.plan.statistics()
     }
@@ -141,7 +131,6 @@ struct MergedRecordBatchStream {
 impl Stream for MergedRecordBatchStream {
     type Item = Result<RecordBatch>;
 
-    #[tracing::instrument(level = "info", skip(self, cx))]
     fn poll_next(
         mut self: Pin<&mut Self>,
         cx: &mut Context<'_>,
@@ -151,7 +140,6 @@ impl Stream for MergedRecordBatchStream {
 }
 
 impl RecordBatchStream for MergedRecordBatchStream {
-    #[tracing::instrument(level = "info", skip(self))]
     fn schema(&self) -> SchemaRef {
         self.schema.clone()
     }

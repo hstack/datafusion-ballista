@@ -38,17 +38,14 @@ struct Shared {
 }
 
 impl Shared {
-    #[tracing::instrument(level = "info", skip(self, subscriber_id, waker))]
     pub fn register(&self, subscriber_id: usize, waker: Waker) {
         self.wakers.write().insert(subscriber_id, waker);
     }
 
-    #[tracing::instrument(level = "info", skip(self, subscriber_id))]
     pub fn deregister(&self, subscriber_id: usize) {
         self.wakers.write().remove(&subscriber_id);
     }
 
-    #[tracing::instrument(level = "info", skip(self))]
     pub fn notify(&self) {
         let guard = self.wakers.read();
         for waker in guard.values() {
@@ -63,7 +60,6 @@ pub(crate) struct ClusterEventSender<T: Clone> {
 }
 
 impl<T: Clone> ClusterEventSender<T> {
-    #[tracing::instrument(level = "info", skip(capacity))]
     pub fn new(capacity: usize) -> Self {
         let (sender, _) = broadcast::channel(capacity);
 
@@ -73,7 +69,6 @@ impl<T: Clone> ClusterEventSender<T> {
         }
     }
 
-    #[tracing::instrument(level = "info", skip(self, event))]
     pub fn send(&self, event: &T) {
         if self.shared.subscriptions.load(Ordering::Acquire) > 0 {
             if let Err(e) = self.sender.send(event.clone()) {
@@ -85,7 +80,6 @@ impl<T: Clone> ClusterEventSender<T> {
         }
     }
 
-    #[tracing::instrument(level = "info", skip(self))]
     pub fn subscribe(&self) -> EventSubscriber<T> {
         self.shared.subscriptions.fetch_add(1, Ordering::AcqRel);
         let id = ID_GEN.fetch_add(1, Ordering::AcqRel);
@@ -98,7 +92,6 @@ impl<T: Clone> ClusterEventSender<T> {
         }
     }
 
-    #[tracing::instrument(level = "info", skip(self))]
     #[cfg(test)]
     pub fn registered_wakers(&self) -> usize {
         self.shared.wakers.read().len()
@@ -106,7 +99,6 @@ impl<T: Clone> ClusterEventSender<T> {
 }
 
 impl<T: Clone> Default for ClusterEventSender<T> {
-    #[tracing::instrument(level = "info", skip())]
     fn default() -> Self {
         Self::new(EVENT_BUFFER_SIZE)
     }
@@ -120,7 +112,6 @@ pub struct EventSubscriber<T: Clone> {
 }
 
 impl<T: Clone> EventSubscriber<T> {
-    #[tracing::instrument(level = "info", skip(self, waker))]
     pub fn register(&mut self, waker: Waker) {
         if !self.registered {
             self.shared.register(self.id, waker);
@@ -130,7 +121,6 @@ impl<T: Clone> EventSubscriber<T> {
 }
 
 impl<T: Clone> Drop for EventSubscriber<T> {
-    #[tracing::instrument(level = "info", skip(self))]
     fn drop(&mut self) {
         self.shared.deregister(self.id);
     }
@@ -139,7 +129,6 @@ impl<T: Clone> Drop for EventSubscriber<T> {
 impl<T: Clone> Stream for EventSubscriber<T> {
     type Item = T;
 
-    #[tracing::instrument(level = "info", skip(self, cx))]
     fn poll_next(
         mut self: Pin<&mut Self>,
         cx: &mut Context<'_>,
@@ -171,7 +160,6 @@ mod test {
     use futures::stream::FuturesUnordered;
     use futures::StreamExt;
 
-    #[tracing::instrument(level = "info", skip(rx))]
     async fn collect_events<T: Clone>(mut rx: EventSubscriber<T>) -> Vec<T> {
         let mut events = vec![];
         while let Some(event) = rx.next().await {

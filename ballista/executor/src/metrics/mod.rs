@@ -41,7 +41,6 @@ pub trait ExecutorMetricsCollector: Send + Sync {
 pub struct LoggingMetricsCollector {}
 
 impl ExecutorMetricsCollector for LoggingMetricsCollector {
-    #[tracing::instrument(level = "info", skip(self, job_id, stage_id, partition, plan))]
     fn record_stage(
         &self,
         job_id: &str,

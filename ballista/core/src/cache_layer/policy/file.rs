@@ -54,7 +54,6 @@ impl<M> FileCacheLayer<M>
 where
     M: CacheMedium,
 {
-    #[tracing::instrument(level = "info", skip(capacity, cache_io_concurrency, cache_medium))]
     pub fn new(capacity: usize, cache_io_concurrency: u32, cache_medium: M) -> Self {
         let cache_store = cache_medium.get_object_store();
 
@@ -82,22 +81,18 @@ where
         }
     }
 
-    #[tracing::instrument(level = "info", skip(self))]
     pub fn cache_store(&self) -> Arc<dyn ObjectStore> {
         self.cache_store.clone()
     }
 
-    #[tracing::instrument(level = "info", skip(self))]
     pub fn cache(&self) -> &DefaultFileLoadingCache<M> {
         &self.loading_cache
     }
 
-    #[tracing::instrument(level = "info", skip(self))]
     pub fn io_runtime(&self) -> &Runtime {
         &self.io_runtime
     }
 
-    #[tracing::instrument(level = "info", skip(self))]
     pub fn metrics(&self) -> &FileCacheMetrics {
         self.metrics.as_ref()
     }
@@ -115,14 +110,12 @@ impl<M> FileCacheLoader<M>
 where
     M: CacheMedium,
 {
-    #[tracing::instrument(level = "info", skip(cache_medium))]
     fn new(cache_medium: M) -> Self {
         Self {
             cache_medium: Arc::new(cache_medium),
         }
     }
 
-    #[tracing::instrument(level = "info", skip(self, source_path, object_meta))]
     fn remove_object(&self, source_path: Path, object_meta: ObjectMeta) {
         let cache_store = self.cache_medium.get_object_store();
         let location = object_meta.location;
@@ -134,7 +127,6 @@ where
     }
 }
 
-#[tracing::instrument(level = "info", skip(cache_medium, source_location, source_store))]
 /// Will return the location of the cached file on the cache object store.
 ///
 /// The last_modified of the ObjectMeta will be from the source file, which will be useful
@@ -223,7 +215,6 @@ where
     type V = ObjectMeta;
     type Extra = Arc<ObjectStoreWithKey>;
 
-    #[tracing::instrument(level = "info", skip(self, source_location, source_store))]
     async fn load(&self, source_location: Self::K, source_store: Self::Extra) -> Self::V {
         match load_object(self.cache_medium.clone(), source_location, &source_store).await
         {
@@ -240,22 +231,18 @@ where
     type K = Path;
     type V = ObjectMeta;
 
-    #[tracing::instrument(level = "info", skip(self, _k, _v))]
     fn listen_on_get(&self, _k: Self::K, _v: Option<Self::V>) {
         // Do nothing
     }
 
-    #[tracing::instrument(level = "info", skip(self, _k, _v))]
     fn listen_on_peek(&self, _k: Self::K, _v: Option<Self::V>) {
         // Do nothing
     }
 
-    #[tracing::instrument(level = "info", skip(self, _k, _v, _old_v))]
     fn listen_on_put(&self, _k: Self::K, _v: Self::V, _old_v: Option<Self::V>) {
         // Do nothing
     }
 
-    #[tracing::instrument(level = "info", skip(self, k, v))]
     fn listen_on_remove(&self, k: Self::K, v: Option<Self::V>) {
         if let Some(v) = v {
             self.remove_object(k, v);
@@ -264,7 +251,6 @@ where
         }
     }
 
-    #[tracing::instrument(level = "info", skip(self, entry))]
     fn listen_on_pop(&self, entry: (Self::K, Self::V)) {
         self.remove_object(entry.0, entry.1);
     }
@@ -279,7 +265,6 @@ pub struct FileCacheCounter {
 }
 
 impl FileCacheCounter {
-    #[tracing::instrument(level = "info", skip(capacity))]
     pub fn new(capacity: usize) -> Self {
         FileCacheCounter {
             capacity,
@@ -287,12 +272,10 @@ impl FileCacheCounter {
         }
     }
 
-    #[tracing::instrument(level = "info", skip(self))]
     pub fn capacity(&self) -> usize {
         self.capacity
     }
 
-    #[tracing::instrument(level = "info", skip(self))]
     pub fn cached_size(&self) -> usize {
         self.cached_size
     }
@@ -302,17 +285,14 @@ impl ResourceCounter for FileCacheCounter {
     type K = Path;
     type V = ObjectMeta;
 
-    #[tracing::instrument(level = "info", skip(self, _k, v))]
     fn consume(&mut self, _k: &Self::K, v: &Self::V) {
         self.cached_size += v.size;
     }
 
-    #[tracing::instrument(level = "info", skip(self, _k, v))]
     fn restore(&mut self, _k: &Self::K, v: &Self::V) {
         self.cached_size -= v.size;
     }
 
-    #[tracing::instrument(level = "info", skip(self))]
     fn exceed_capacity(&self) -> bool {
         self.cached_size > self.capacity
     }

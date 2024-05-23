@@ -38,7 +38,6 @@ use tokio::net::TcpListener;
 use tonic::transport::Channel;
 use uuid::Uuid;
 
-#[tracing::instrument(level = "info", skip(scheduler, concurrent_tasks, codec))]
 pub async fn new_standalone_executor<
     T: 'static + AsLogicalPlan,
     U: 'static + AsExecutionPlan,

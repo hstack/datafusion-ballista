@@ -68,7 +68,6 @@ pub struct ShuffleReaderExec {
 }
 
 impl ShuffleReaderExec {
-    #[tracing::instrument(level = "info", skip(stage_id, partition, schema))]
     /// Create a new ShuffleReaderExec
     pub fn try_new(
         stage_id: usize,
@@ -85,7 +84,6 @@ impl ShuffleReaderExec {
         })
     }
 
-    #[tracing::instrument(level = "info", skip(schema, partition_len))]
     /// This function creates the cache object that stores the plan properties such as schema, equivalence properties, ordering, partitioning, etc.
     fn compute_properties(
         schema: SchemaRef,
@@ -104,7 +102,6 @@ impl ShuffleReaderExec {
 }
 
 impl DisplayAs for ShuffleReaderExec {
-    #[tracing::instrument(level = "info", skip(self, t, f))]
     fn fmt_as(
         &self,
         t: DisplayFormatType,
@@ -119,25 +116,20 @@ impl DisplayAs for ShuffleReaderExec {
 }
 
 impl ExecutionPlan for ShuffleReaderExec {
-    #[tracing::instrument(level = "info", skip(self))]
     fn as_any(&self) -> &dyn Any {
         self
     }
 
-    #[tracing::instrument(level = "info", skip(self))]
     fn schema(&self) -> SchemaRef {
         self.schema.clone()
     }
 
-    #[tracing::instrument(level = "info", skip(self))]
     fn properties(&self) -> &PlanProperties { &self.cache }
 
-    #[tracing::instrument(level = "info", skip(self))]
     fn children(&self) -> Vec<Arc<dyn ExecutionPlan>> {
         vec![]
     }
 
-    #[tracing::instrument(level = "info", skip(self, _children))]
     fn with_new_children(
         self: Arc<Self>,
         _children: Vec<Arc<dyn ExecutionPlan>>,
@@ -149,7 +141,6 @@ impl ExecutionPlan for ShuffleReaderExec {
         )?))
     }
 
-    #[tracing::instrument(level = "info", skip(self, partition, context))]
     fn execute(
         &self,
         partition: usize,
@@ -187,12 +178,10 @@ impl ExecutionPlan for ShuffleReaderExec {
         Ok(Box::pin(result))
     }
 
-    #[tracing::instrument(level = "info", skip(self))]
     fn metrics(&self) -> Option<MetricsSet> {
         Some(self.metrics.clone_inner())
     }
 
-    #[tracing::instrument(level = "info", skip(self))]
     fn statistics(&self) -> Result<Statistics> {
         Ok(stats_for_partitions(
             self.schema.fields().len(),
@@ -204,7 +193,6 @@ impl ExecutionPlan for ShuffleReaderExec {
     }
 }
 
-#[tracing::instrument(level = "info", skip(num_fields, partition_stats))]
 fn stats_for_partitions(
     num_fields: usize,
     partition_stats: impl Iterator<Item = PartitionStats>,
@@ -234,7 +222,6 @@ struct LocalShuffleStream {
 }
 
 impl LocalShuffleStream {
-    #[tracing::instrument(level = "info", skip(reader))]
     pub fn new(reader: StreamReader<BufReader<File>>) -> Self {
         LocalShuffleStream { reader }
     }
@@ -243,7 +230,6 @@ impl LocalShuffleStream {
 impl Stream for LocalShuffleStream {
     type Item = Result<RecordBatch>;
 
-    #[tracing::instrument(level = "info", skip(self))]
     fn poll_next(
         mut self: Pin<&mut Self>,
         _: &mut Context<'_>,
@@ -256,7 +242,6 @@ impl Stream for LocalShuffleStream {
 }
 
 impl RecordBatchStream for LocalShuffleStream {
-    #[tracing::instrument(level = "info", skip(self))]
     fn schema(&self) -> SchemaRef {
         self.reader.schema()
     }
@@ -268,7 +253,6 @@ struct AbortableReceiverStream {
 }
 
 impl AbortableReceiverStream {
-    #[tracing::instrument(level = "info", skip(rx, join_handles))]
     /// Construct a new SendableRecordBatchReceiverStream which will send batches of the specified schema from inner
     pub fn create(
         rx: tokio::sync::mpsc::Receiver<
@@ -286,7 +270,6 @@ impl AbortableReceiverStream {
 impl Stream for AbortableReceiverStream {
     type Item = result::Result<SendableRecordBatchStream, ArrowError>;
 
-    #[tracing::instrument(level = "info", skip(self, cx))]
     fn poll_next(
         mut self: std::pin::Pin<&mut Self>,
         cx: &mut std::task::Context<'_>,
@@ -297,7 +280,6 @@ impl Stream for AbortableReceiverStream {
     }
 }
 
-#[tracing::instrument(level = "info", skip(partition_locations, max_request_num))]
 fn send_fetch_partitions(
     partition_locations: Vec<PartitionLocation>,
     max_request_num: usize,
@@ -347,7 +329,6 @@ fn send_fetch_partitions(
     AbortableReceiverStream::create(response_receiver, join_handles)
 }
 
-#[tracing::instrument(level = "info", skip(location))]
 fn check_is_local_location(location: &PartitionLocation) -> bool {
     std::path::Path::new(location.path.as_str()).exists()
 }
@@ -373,7 +354,6 @@ enum PartitionReaderEnum {
 #[async_trait]
 impl PartitionReader for PartitionReaderEnum {
     // Notice return `BallistaError::FetchFailed` will let scheduler re-schedule the task.
-    #[tracing::instrument(level = "info", skip(self, location))]
     async fn fetch_partition(
         &self,
         location: &PartitionLocation,
@@ -388,7 +368,6 @@ impl PartitionReader for PartitionReaderEnum {
     }
 }
 
-#[tracing::instrument(level = "info", skip(location))]
 async fn fetch_partition_remote(
     location: &PartitionLocation,
 ) -> result::Result<SendableRecordBatchStream, BallistaError> {
@@ -417,7 +396,6 @@ async fn fetch_partition_remote(
         .await
 }
 
-#[tracing::instrument(level = "info", skip(location))]
 async fn fetch_partition_local(
     location: &PartitionLocation,
 ) -> result::Result<SendableRecordBatchStream, BallistaError> {
@@ -437,7 +415,6 @@ async fn fetch_partition_local(
     Ok(Box::pin(LocalShuffleStream::new(reader)))
 }
 
-#[tracing::instrument(level = "info", skip(path))]
 fn fetch_partition_local_inner(
     path: &str,
 ) -> result::Result<StreamReader<BufReader<File>>, BallistaError> {
@@ -450,7 +427,6 @@ fn fetch_partition_local_inner(
     Ok(reader)
 }
 
-#[tracing::instrument(level = "info", skip(_location))]
 async fn fetch_partition_object_store(
     _location: &PartitionLocation,
 ) -> result::Result<SendableRecordBatchStream, BallistaError> {
@@ -648,7 +624,6 @@ mod tests {
         }
     }
 
-    #[tracing::instrument(level = "info", skip(max_request_num, partition_num))]
     async fn test_send_fetch_partitions(max_request_num: usize, partition_num: usize) {
         let schema = get_test_partition_schema();
         let data_array = Int32Array::from(vec![1]);
@@ -679,7 +654,6 @@ mod tests {
         assert_eq!(partition_num, result.len());
     }
 
-    #[tracing::instrument(level = "info", skip(n, path))]
     fn get_test_partition_locations(n: usize, path: String) -> Vec<PartitionLocation> {
         (0..n)
             .map(|partition_id| PartitionLocation {
@@ -702,13 +676,11 @@ mod tests {
             .collect()
     }
 
-    #[tracing::instrument(level = "info", skip())]
     fn get_test_partition_schema() -> Schema {
         Schema::new(vec![Field::new("id", DataType::Int32, false)])
     }
 
     // create two partitions each has two same batches
-    #[tracing::instrument(level = "info", skip())]
     fn create_test_data_plan() -> Result<Arc<dyn ExecutionPlan>> {
         let batch = create_test_batch();
         let partition = vec![batch.clone(), batch];
@@ -720,7 +692,6 @@ mod tests {
         )?))
     }
 
-    #[tracing::instrument(level = "info", skip())]
     fn create_test_batch() -> RecordBatch {
         RecordBatch::try_new(
             create_test_schema(),
@@ -736,7 +707,6 @@ mod tests {
         .unwrap()
     }
 
-    #[tracing::instrument(level = "info", skip())]
     fn create_test_schema() -> SchemaRef {
         Arc::new(Schema::new(vec![
             Field::new("number", DataType::UInt32, true),

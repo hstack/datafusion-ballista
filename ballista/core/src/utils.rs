@@ -63,7 +63,6 @@ use tonic::codegen::StdError;
 use tonic::transport::{Channel, ClientTlsConfig, Error, Server};
 use crate::serde::BallistaMultiLogicalExtensionCodec;
 
-#[tracing::instrument(level = "info", skip(config))]
 /// Default session builder using the provided configuration
 pub fn default_session_builder(config: SessionConfig) -> SessionState {
     let mut session_state = SessionState::new_with_config_rt(
@@ -83,7 +82,6 @@ pub fn default_session_builder(config: SessionConfig) -> SessionState {
     session_state
 }
 
-#[tracing::instrument(level = "info", skip(stream, path, disk_write_metric))]
 /// Stream data to disk in Arrow IPC format
 pub async fn write_stream_to_disk(
     stream: &mut Pin<Box<dyn RecordBatchStream + Send>>,
@@ -127,7 +125,6 @@ pub async fn write_stream_to_disk(
     ))
 }
 
-#[tracing::instrument(level = "info", skip(stream))]
 pub async fn collect_stream(
     stream: &mut Pin<Box<dyn RecordBatchStream + Send>>,
 ) -> Result<Vec<RecordBatch>> {
@@ -138,7 +135,6 @@ pub async fn collect_stream(
     Ok(batches)
 }
 
-#[tracing::instrument(level = "info", skip(filename, stages))]
 pub fn produce_diagram(filename: &str, stages: &[Arc<ShuffleWriterExec>]) -> Result<()> {
     let write_file = File::create(filename)?;
     let mut w = BufWriter::new(&write_file);
@@ -175,7 +171,6 @@ pub fn produce_diagram(filename: &str, stages: &[Arc<ShuffleWriterExec>]) -> Res
     Ok(())
 }
 
-#[tracing::instrument(level = "info", skip(w, plan, stage_id, id, draw_entity))]
 fn build_exec_plan_diagram(
     w: &mut BufWriter<&File>,
     plan: &dyn ExecutionPlan,
@@ -255,7 +250,6 @@ fn build_exec_plan_diagram(
     Ok(node_id)
 }
 
-#[tracing::instrument(level = "info", skip(scheduler_url, session_id, config))]
 /// Create a client DataFusion context that uses the BallistaQueryPlanner to send logical plans
 /// to a Ballista scheduler
 pub fn create_df_ctx_with_ballista_query_planner<T: 'static + AsLogicalPlan>(
@@ -303,7 +297,6 @@ pub struct BallistaQueryPlanner<T: AsLogicalPlan> {
 }
 
 impl<T: 'static + AsLogicalPlan> BallistaQueryPlanner<T> {
-    #[tracing::instrument(level = "info", skip(scheduler_url, config))]
     pub fn new(scheduler_url: String, config: BallistaConfig) -> Self {
         Self {
             scheduler_url,
@@ -313,7 +306,6 @@ impl<T: 'static + AsLogicalPlan> BallistaQueryPlanner<T> {
         }
     }
 
-    #[tracing::instrument(level = "info", skip(scheduler_url, config, extension_codec))]
     pub fn with_extension(
         scheduler_url: String,
         config: BallistaConfig,
@@ -327,7 +319,6 @@ impl<T: 'static + AsLogicalPlan> BallistaQueryPlanner<T> {
         }
     }
 
-    #[tracing::instrument(level = "info", skip(scheduler_url, config, extension_codec, plan_repr))]
     pub fn with_repr(
         scheduler_url: String,
         config: BallistaConfig,
@@ -345,7 +336,6 @@ impl<T: 'static + AsLogicalPlan> BallistaQueryPlanner<T> {
 
 #[async_trait]
 impl<T: 'static + AsLogicalPlan> QueryPlanner for BallistaQueryPlanner<T> {
-    #[tracing::instrument(level = "info", skip(self, logical_plan, session_state))]
     async fn create_physical_plan(
         &self,
         logical_plan: &LogicalPlan,
@@ -368,7 +358,6 @@ impl<T: 'static + AsLogicalPlan> QueryPlanner for BallistaQueryPlanner<T> {
     }
 }
 
-#[tracing::instrument(level = "info", skip(dst))]
 pub async fn create_grpc_client_connection<D>(
     dst: D,
 ) -> std::result::Result<Channel, Error>
@@ -392,7 +381,6 @@ where
     endpoint.connect().await
 }
 
-#[tracing::instrument(level = "info", skip())]
 pub fn create_grpc_server() -> Server {
     Server::builder()
         .timeout(Duration::from_secs(20))
@@ -403,7 +391,6 @@ pub fn create_grpc_server() -> Server {
         .http2_keepalive_timeout(Option::Some(Duration::from_secs(20)))
 }
 
-#[tracing::instrument(level = "info", skip(plan))]
 pub fn collect_plan_metrics(plan: &dyn ExecutionPlan) -> Vec<MetricsSet> {
     let mut metrics_array = Vec::<MetricsSet>::new();
     if let Some(metrics) = plan.metrics() {
@@ -417,7 +404,6 @@ pub fn collect_plan_metrics(plan: &dyn ExecutionPlan) -> Vec<MetricsSet> {
     metrics_array
 }
 
-#[tracing::instrument(level = "info", skip(interval_seconds))]
 /// Given an interval in seconds, get the time in seconds before now
 pub fn get_time_before(interval_seconds: u64) -> u64 {
     let now_epoch_ts = SystemTime::now()

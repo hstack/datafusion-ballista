@@ -49,7 +49,6 @@ pub struct ExecutorManager {
 }
 
 impl ExecutorManager {
-    #[tracing::instrument(level = "info", skip(cluster_state, config))]
     pub(crate) fn new(
         cluster_state: Arc<dyn ClusterState>,
         config: Arc<SchedulerConfig>,
@@ -61,14 +60,12 @@ impl ExecutorManager {
         }
     }
 
-    #[tracing::instrument(level = "info", skip(self))]
     pub async fn init(&self) -> Result<()> {
         self.cluster_state.init().await?;
 
         Ok(())
     }
 
-    #[tracing::instrument(level = "info", skip(self, active_jobs))]
     /// Bind the ready to running tasks from [`active_jobs`] with available executors.
     ///
     /// If `executors` is provided, only bind slots from the specified executor IDs
@@ -94,14 +91,12 @@ impl ExecutorManager {
             .await
     }
 
-    #[tracing::instrument(level = "info", skip(self, executor_slots))]
     /// Returned reserved task slots to the pool of available slots. This operation is atomic
     /// so either the entire pool of reserved task slots it returned or none are.
     pub async fn unbind_tasks(&self, executor_slots: Vec<ExecutorSlot>) -> Result<()> {
         self.cluster_state.unbind_tasks(executor_slots).await
     }
 
-    #[tracing::instrument(level = "info", skip(self, tasks))]
     /// Send rpc to Executors to cancel the running tasks
     pub async fn cancel_running_tasks(&self, tasks: Vec<RunningTaskInfo>) -> Result<()> {
         let mut tasks_to_cancel: HashMap<String, Vec<protobuf::RunningTaskInfo>> =
@@ -142,7 +137,6 @@ impl ExecutorManager {
         Ok(())
     }
 
-    #[tracing::instrument(level = "info", skip(self, job_id, clean_up_interval))]
     /// Send rpc to Executors to clean up the job data by delayed clean_up_interval seconds
     pub(crate) fn clean_up_job_data_delayed(
         &self,
@@ -164,7 +158,6 @@ impl ExecutorManager {
         });
     }
 
-    #[tracing::instrument(level = "info", skip(self, job_id))]
     /// Send rpc to Executors to clean up the job data in a spawn thread
     pub fn clean_up_job_data(&self, job_id: String) {
         let executor_manager = self.clone();
@@ -173,7 +166,6 @@ impl ExecutorManager {
         });
     }
 
-    #[tracing::instrument(level = "info", skip(self, job_id))]
     /// Send rpc to Executors to clean up the job data
     async fn clean_up_job_data_inner(&self, job_id: String) {
         let alive_executors = self.get_alive_executors();
@@ -199,7 +191,6 @@ impl ExecutorManager {
         }
     }
 
-    #[tracing::instrument(level = "info", skip(self))]
     /// Get a list of all executors along with the timestamp of their last recorded heartbeat
     pub async fn get_executor_state(&self) -> Result<Vec<(ExecutorMetadata, Duration)>> {
         let heartbeat_timestamps: Vec<(String, u64)> = self
@@ -221,7 +212,6 @@ impl ExecutorManager {
         Ok(state)
     }
 
-    #[tracing::instrument(level = "info", skip(self, executor_id))]
     /// Get executor metadata for the provided executor ID. Returns an error if the executor does not exist
     pub async fn get_executor_metadata(
         &self,
@@ -230,7 +220,6 @@ impl ExecutorManager {
         self.cluster_state.get_executor_metadata(executor_id).await
     }
 
-    #[tracing::instrument(level = "info", skip(self, metadata))]
     /// It's only used for pull-based task scheduling.
     ///
     /// For push-based one, we should use [`register_executor`], instead.
@@ -238,7 +227,6 @@ impl ExecutorManager {
         self.cluster_state.save_executor_metadata(metadata).await
     }
 
-    #[tracing::instrument(level = "info", skip(self, metadata, specification))]
     /// Register the executor with the scheduler.
     ///
     /// This will save the executor metadata and the executor data to persistent state.
@@ -263,7 +251,6 @@ impl ExecutorManager {
         Ok(())
     }
 
-    #[tracing::instrument(level = "info", skip(self, executor_id, reason))]
     /// Remove the executor from the cluster
     pub async fn remove_executor(
         &self,
@@ -274,7 +261,6 @@ impl ExecutorManager {
         self.cluster_state.remove_executor(executor_id).await
     }
 
-    #[tracing::instrument(level = "info", skip(self, executor_id, stop_reason))]
     pub async fn stop_executor(&self, executor_id: &str, stop_reason: String) {
         let executor_id = executor_id.to_string();
         match self.get_client(&executor_id).await {
@@ -304,7 +290,6 @@ impl ExecutorManager {
         }
     }
 
-    #[tracing::instrument(level = "info", skip(self, executor_id, multi_tasks, scheduler_id))]
     pub async fn launch_multi_task(
         &self,
         executor_id: &str,
@@ -328,7 +313,6 @@ impl ExecutorManager {
         Ok(())
     }
 
-    #[tracing::instrument(level = "info", skip(self, heartbeat))]
     pub(crate) async fn save_executor_heartbeat(
         &self,
         heartbeat: ExecutorHeartbeat,
@@ -340,7 +324,6 @@ impl ExecutorManager {
         Ok(())
     }
 
-    #[tracing::instrument(level = "info", skip(self, executor_id))]
     pub(crate) fn is_dead_executor(&self, executor_id: &str) -> bool {
         self.cluster_state
             .get_executor_heartbeat(executor_id)
@@ -354,7 +337,6 @@ impl ExecutorManager {
             })
     }
 
-    #[tracing::instrument(level = "info", skip(self))]
     /// Retrieve the set of all executor IDs where the executor has been observed in the last
     /// `last_seen_ts_threshold` seconds.
     pub(crate) fn get_alive_executors(&self) -> HashSet<String> {
@@ -378,7 +360,6 @@ impl ExecutorManager {
             .collect()
     }
 
-    #[tracing::instrument(level = "info", skip(self))]
     /// Return a list of expired executors
     pub(crate) fn get_expired_executors(&self) -> Vec<ExecutorHeartbeat> {
         // Threshold for last heartbeat from Active executor before marking dead
@@ -411,7 +392,6 @@ impl ExecutorManager {
             .collect::<Vec<_>>()
     }
 
-    #[tracing::instrument(level = "info", skip(self, executor_id))]
     async fn get_client(&self, executor_id: &str) -> Result<ExecutorGrpcClient<Channel>> {
         let client = self.clients.get(executor_id).map(|value| value.clone());
 
@@ -433,7 +413,6 @@ impl ExecutorManager {
         }
     }
 
-    #[tracing::instrument(level = "info", skip(metadata))]
     #[cfg(not(test))]
     async fn test_connectivity(metadata: &ExecutorMetadata) -> Result<()> {
         let executor_url = format!("http://{}:{}", metadata.host, metadata.grpc_port);
@@ -449,7 +428,6 @@ impl ExecutorManager {
         Ok(())
     }
 
-    #[tracing::instrument(level = "info", skip(_metadata))]
     #[cfg(test)]
     async fn test_connectivity(_metadata: &ExecutorMetadata) -> Result<()> {
         Ok(())

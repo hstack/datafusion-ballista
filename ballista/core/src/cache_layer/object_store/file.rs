@@ -47,7 +47,6 @@ impl<M> FileCacheObjectStore<M>
 where
     M: CacheMedium,
 {
-    #[tracing::instrument(level = "info", skip(cache_layer, inner))]
     pub fn new(
         cache_layer: Arc<FileCacheLayer<M>>,
         inner: Arc<ObjectStoreWithKey>,
@@ -60,7 +59,6 @@ impl<M> Display for FileCacheObjectStore<M>
 where
     M: CacheMedium,
 {
-    #[tracing::instrument(level = "info", skip(self, f))]
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         write!(
             f,
@@ -76,7 +74,6 @@ impl<M> ObjectStore for FileCacheObjectStore<M>
 where
     M: CacheMedium,
 {
-    #[tracing::instrument(level = "info", skip(self, _location, _bytes))]
     async fn put(
         &self,
         _location: &Path,
@@ -89,7 +86,6 @@ where
         })
     }
 
-    #[tracing::instrument(level = "info", skip(self, _location, _bytes, _opts))]
     async fn put_opts(
         &self,
         _location: &Path,
@@ -103,7 +99,6 @@ where
         })
     }
 
-    #[tracing::instrument(level = "info", skip(self, _location))]
     async fn put_multipart(
         &self,
         _location: &Path,
@@ -115,7 +110,6 @@ where
         })
     }
 
-    #[tracing::instrument(level = "info", skip(self, _location, _multipart_id))]
     async fn abort_multipart(
         &self,
         _location: &Path,
@@ -128,7 +122,6 @@ where
         })
     }
 
-    #[tracing::instrument(level = "info", skip(self, location))]
     /// If it already exists in cache, use the cached result.
     /// Otherwise, trigger a task to load the data into cache; At the meanwhile,
     /// get the result from the data source
@@ -153,7 +146,6 @@ where
         }
     }
 
-    #[tracing::instrument(level = "info", skip(self, location, options))]
     async fn get_opts(
         &self,
         location: &Path,
@@ -182,7 +174,6 @@ where
         }
     }
 
-    #[tracing::instrument(level = "info", skip(self, location, range))]
     /// If it already exists in cache, use the cached result.
     /// Otherwise, trigger a task to load the data into cache; At the meanwhile,
     /// get the result from the data source
@@ -214,7 +205,6 @@ where
         }
     }
 
-    #[tracing::instrument(level = "info", skip(self, location))]
     /// If it already exists in cache, use the cached result.
     /// Otherwise, get the result from the data source.
     /// It will not trigger the task to load data into cache.
@@ -229,7 +219,6 @@ where
         }
     }
 
-    #[tracing::instrument(level = "info", skip(self, _location))]
     async fn delete(&self, _location: &Path) -> object_store::Result<()> {
         Err(Error::NotSupported {
             source: Box::new(BallistaError::General(
@@ -238,7 +227,6 @@ where
         })
     }
 
-    #[tracing::instrument(level = "info", skip(self, _prefix))]
     fn list(
         &self,
         _prefix: Option<&Path>,
@@ -253,7 +241,6 @@ where
         .boxed()
     }
 
-    #[tracing::instrument(level = "info", skip(self, _prefix))]
     async fn list_with_delimiter(
         &self,
         _prefix: Option<&Path>,
@@ -263,14 +250,12 @@ where
         })
     }
 
-    #[tracing::instrument(level = "info", skip(self, _from, _to))]
     async fn copy(&self, _from: &Path, _to: &Path) -> object_store::Result<()> {
         Err(Error::NotSupported {
             source: Box::new(BallistaError::General("Copy is not supported".to_string())),
         })
     }
 
-    #[tracing::instrument(level = "info", skip(self, _from, _to))]
     async fn copy_if_not_exists(
         &self,
         _from: &Path,

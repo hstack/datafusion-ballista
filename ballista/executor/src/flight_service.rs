@@ -48,14 +48,12 @@ use tracing::warn;
 pub struct BallistaFlightService {}
 
 impl BallistaFlightService {
-    #[tracing::instrument(level = "info", skip())]
     pub fn new() -> Self {
         Self {}
     }
 }
 
 impl Default for BallistaFlightService {
-    #[tracing::instrument(level = "info", skip())]
     fn default() -> Self {
         Self::new()
     }
@@ -74,7 +72,6 @@ impl FlightService for BallistaFlightService {
     type ListActionsStream = BoxedFlightStream<ActionType>;
     type ListFlightsStream = BoxedFlightStream<FlightInfo>;
 
-    #[tracing::instrument(level = "info", skip(self, request))]
     async fn do_get(
         &self,
         request: Request<Ticket>,
@@ -121,7 +118,6 @@ impl FlightService for BallistaFlightService {
         }
     }
 
-    #[tracing::instrument(level = "info", skip(self, _request))]
     async fn get_schema(
         &self,
         _request: Request<FlightDescriptor>,
@@ -129,7 +125,6 @@ impl FlightService for BallistaFlightService {
         Err(Status::unimplemented("get_schema"))
     }
 
-    #[tracing::instrument(level = "info", skip(self, _request))]
     async fn get_flight_info(
         &self,
         _request: Request<FlightDescriptor>,
@@ -137,7 +132,6 @@ impl FlightService for BallistaFlightService {
         Err(Status::unimplemented("get_flight_info"))
     }
 
-    #[tracing::instrument(level = "info", skip(self, _request))]
     async fn handshake(
         &self,
         _request: Request<Streaming<HandshakeRequest>>,
@@ -162,7 +156,6 @@ impl FlightService for BallistaFlightService {
         Ok(resp)
     }
 
-    #[tracing::instrument(level = "info", skip(self, _request))]
     async fn list_flights(
         &self,
         _request: Request<Criteria>,
@@ -170,7 +163,6 @@ impl FlightService for BallistaFlightService {
         Err(Status::unimplemented("list_flights"))
     }
 
-    #[tracing::instrument(level = "info", skip(self, request))]
     async fn do_put(
         &self,
         request: Request<Streaming<FlightData>>,
@@ -184,7 +176,6 @@ impl FlightService for BallistaFlightService {
         Err(Status::unimplemented("do_put"))
     }
 
-    #[tracing::instrument(level = "info", skip(self, request))]
     async fn do_action(
         &self,
         request: Request<Action>,
@@ -196,7 +187,6 @@ impl FlightService for BallistaFlightService {
         Err(Status::unimplemented("do_action"))
     }
 
-    #[tracing::instrument(level = "info", skip(self, _request))]
     async fn list_actions(
         &self,
         _request: Request<Empty>,
@@ -204,7 +194,6 @@ impl FlightService for BallistaFlightService {
         Err(Status::unimplemented("list_actions"))
     }
 
-    #[tracing::instrument(level = "info", skip(self, _request))]
     async fn do_exchange(
         &self,
         _request: Request<Streaming<FlightData>>,
@@ -212,13 +201,11 @@ impl FlightService for BallistaFlightService {
         Err(Status::unimplemented("do_exchange"))
     }
 
-    #[tracing::instrument(level = "info", skip(self, request))]
     async fn poll_flight_info(&self, request: Request<FlightDescriptor>) -> Result<Response<PollInfo>, Status> {
         Err(Status::unimplemented("poll_flight_info"))
     }
 }
 
-#[tracing::instrument(level = "info", skip(reader, tx))]
 fn read_partition<T>(
     reader: StreamReader<std::io::BufReader<T>>,
     tx: Sender<Result<RecordBatch, FlightError>>,
@@ -247,12 +234,10 @@ where
     Ok(())
 }
 
-#[tracing::instrument(level = "info", skip(e))]
 fn from_arrow_err(e: &ArrowError) -> Status {
     Status::internal(format!("ArrowError: {e:?}"))
 }
 
-#[tracing::instrument(level = "info", skip(e))]
 fn from_ballista_err(e: &ballista_core::error::BallistaError) -> Status {
     Status::internal(format!("Ballista Error: {e:?}"))
 }

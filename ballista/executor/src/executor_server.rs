@@ -77,7 +77,6 @@ struct CuratorTaskStatus {
     task_status: TaskStatus,
 }
 
-#[tracing::instrument(level = "info", skip(scheduler, config, executor, codec, stop_send, shutdown_noti))]
 pub async fn startup<T: 'static + AsLogicalPlan, U: 'static + AsExecutionPlan>(
     mut scheduler: SchedulerGrpcClient<Channel>,
     config: Arc<ExecutorProcessConfig>,
@@ -160,7 +159,6 @@ pub async fn startup<T: 'static + AsLogicalPlan, U: 'static + AsExecutionPlan>(
     Ok(server)
 }
 
-#[tracing::instrument(level = "info", skip(scheduler, executor))]
 #[allow(clippy::clone_on_copy)]
 async fn register_executor(
     scheduler: &mut SchedulerGrpcClient<Channel>,
@@ -209,7 +207,6 @@ unsafe impl Sync for ExecutorEnv {}
 pub static TERMINATING: AtomicBool = AtomicBool::new(false);
 
 impl<T: 'static + AsLogicalPlan, U: 'static + AsExecutionPlan> ExecutorServer<T, U> {
-    #[tracing::instrument(level = "info", skip(scheduler_to_register, executor, executor_env, codec, grpc_max_encoding_message_size, grpc_max_decoding_message_size))]
     fn new(
         scheduler_to_register: SchedulerGrpcClient<Channel>,
         executor: Arc<Executor>,
@@ -233,7 +230,6 @@ impl<T: 'static + AsLogicalPlan, U: 'static + AsExecutionPlan> ExecutorServer<T,
         }
     }
 
-    #[tracing::instrument(level = "info", skip(self, scheduler_id))]
     async fn get_scheduler_client(
         &self,
         scheduler_id: &str,
@@ -258,7 +254,6 @@ impl<T: 'static + AsLogicalPlan, U: 'static + AsExecutionPlan> ExecutorServer<T,
         }
     }
 
-    #[tracing::instrument(level = "info", skip(self))]
     /// 1. First Heartbeat to its registration scheduler, if successful then return; else go next.
     /// 2. Heartbeat to schedulers which has launching tasks to this executor until one succeeds
     async fn heartbeat(&self) {
@@ -313,7 +308,6 @@ impl<T: 'static + AsLogicalPlan, U: 'static + AsExecutionPlan> ExecutorServer<T,
         }
     }
 
-    #[tracing::instrument(level = "info", skip(self, task_identity, curator_task))]
     /// This method should not return Err. If task fails, a failure task status should be sent
     /// to the channel to notify the scheduler.
     async fn run_task(&self, task_identity: String, curator_task: CuratorTaskDefinition) {
@@ -436,7 +430,6 @@ impl<T: 'static + AsLogicalPlan, U: 'static + AsExecutionPlan> ExecutorServer<T,
     }
 
     // TODO populate with real metrics
-    #[tracing::instrument(level = "info", skip(self))]
     fn get_executor_metrics(&self) -> Vec<ExecutorMetric> {
         let available_memory = ExecutorMetric {
             metric: Some(executor_metric::Metric::AvailableMemory(u64::MAX)),
@@ -452,12 +445,10 @@ struct Heartbeater<T: 'static + AsLogicalPlan, U: 'static + AsExecutionPlan> {
 }
 
 impl<T: 'static + AsLogicalPlan, U: 'static + AsExecutionPlan> Heartbeater<T, U> {
-    #[tracing::instrument(level = "info", skip(executor_server))]
     fn new(executor_server: Arc<ExecutorServer<T, U>>) -> Self {
         Self { executor_server }
     }
 
-    #[tracing::instrument(level = "info", skip(self, shutdown_noti, executor_heartbeat_interval_seconds))]
     fn start(
         &self,
         shutdown_noti: &ShutdownNotifier,
@@ -493,12 +484,10 @@ struct TaskRunnerPool<T: 'static + AsLogicalPlan, U: 'static + AsExecutionPlan> 
 }
 
 impl<T: 'static + AsLogicalPlan, U: 'static + AsExecutionPlan> TaskRunnerPool<T, U> {
-    #[tracing::instrument(level = "info", skip(executor_server))]
     fn new(executor_server: Arc<ExecutorServer<T, U>>) -> Self {
         Self { executor_server }
     }
 
-    #[tracing::instrument(level = "info", skip(self, rx_task, rx_task_status, shutdown_noti))]
     fn start(
         &self,
         mut rx_task: mpsc::Receiver<CuratorTaskDefinition>,
@@ -645,7 +634,6 @@ impl<T: 'static + AsLogicalPlan, U: 'static + AsExecutionPlan> TaskRunnerPool<T,
 impl<T: 'static + AsLogicalPlan, U: 'static + AsExecutionPlan> ExecutorGrpc
     for ExecutorServer<T, U>
 {
-    #[tracing::instrument(level = "info", skip(self, request))]
     async fn launch_task(
         &self,
         request: Request<LaunchTaskParams>,
@@ -675,7 +663,6 @@ impl<T: 'static + AsLogicalPlan, U: 'static + AsExecutionPlan> ExecutorGrpc
         Ok(Response::new(LaunchTaskResult { success: true }))
     }
 
-    #[tracing::instrument(level = "info", skip(self, request))]
     /// by this interface, it can reduce the deserialization cost for multiple tasks
     /// belong to the same job stage running on the same one executor
     async fn launch_multi_task(
@@ -710,7 +697,6 @@ impl<T: 'static + AsLogicalPlan, U: 'static + AsExecutionPlan> ExecutorGrpc
         Ok(Response::new(LaunchMultiTaskResult { success: true }))
     }
 
-    #[tracing::instrument(level = "info", skip(self, request))]
     async fn stop_executor(
         &self,
         request: Request<StopExecutorParams>,
@@ -734,7 +720,6 @@ impl<T: 'static + AsLogicalPlan, U: 'static + AsExecutionPlan> ExecutorGrpc
         Ok(Response::new(StopExecutorResult {}))
     }
 
-    #[tracing::instrument(level = "info", skip(self, request))]
     async fn cancel_tasks(
         &self,
         request: Request<CancelTasksParams>,
@@ -763,7 +748,6 @@ impl<T: 'static + AsLogicalPlan, U: 'static + AsExecutionPlan> ExecutorGrpc
         Ok(Response::new(CancelTasksResult { cancelled }))
     }
 
-    #[tracing::instrument(level = "info", skip(self, request))]
     async fn remove_job_data(
         &self,
         request: Request<RemoveJobDataParams>,
@@ -800,7 +784,6 @@ impl<T: 'static + AsLogicalPlan, U: 'static + AsExecutionPlan> ExecutorGrpc
 }
 
 // Check whether the path is the subdirectory of the base directory
-#[tracing::instrument(level = "info", skip(path, base_path))]
 fn is_subdirectory(path: &Path, base_path: &Path) -> bool {
     if let (Ok(path), Ok(base_path)) = (path.canonicalize(), base_path.canonicalize()) {
         if let Some(parent_path) = path.parent() {
@@ -846,7 +829,6 @@ mod test {
         }
     }
 
-    #[tracing::instrument(level = "info", skip(base_dir, job_id))]
     fn prepare_testing_job_directory(base_dir: &Path, job_id: &str) -> PathBuf {
         let mut path = base_dir.to_path_buf();
         path.push(job_id);

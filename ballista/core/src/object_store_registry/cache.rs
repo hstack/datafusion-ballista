@@ -25,7 +25,6 @@ use object_store::ObjectStore;
 use std::sync::Arc;
 use url::Url;
 
-#[tracing::instrument(level = "info", skip(config, cache_layer))]
 /// Get a RuntimeConfig with CachedBasedObjectStoreRegistry
 pub fn with_cache_layer(config: RuntimeConfig, cache_layer: CacheLayer) -> RuntimeConfig {
     let registry = Arc::new(BallistaObjectStoreRegistry::default());
@@ -45,14 +44,12 @@ pub struct CachedBasedObjectStoreRegistry {
 }
 
 impl CachedBasedObjectStoreRegistry {
-    #[tracing::instrument(level = "info", skip(inner, cache_layer))]
     pub fn new(inner: Arc<dyn ObjectStoreRegistry>, cache_layer: CacheLayer) -> Self {
         Self { inner, cache_layer }
     }
 }
 
 impl ObjectStoreRegistry for CachedBasedObjectStoreRegistry {
-    #[tracing::instrument(level = "info", skip(self, url, store))]
     fn register_store(
         &self,
         url: &Url,
@@ -61,7 +58,6 @@ impl ObjectStoreRegistry for CachedBasedObjectStoreRegistry {
         self.inner.register_store(url, store)
     }
 
-    #[tracing::instrument(level = "info", skip(self, url))]
     fn get_store(&self, url: &Url) -> datafusion::common::Result<Arc<dyn ObjectStore>> {
         let source_object_store = self.inner.get_store(url)?;
         let object_store_with_key = Arc::new(ObjectStoreWithKey::new(
@@ -79,7 +75,6 @@ impl ObjectStoreRegistry for CachedBasedObjectStoreRegistry {
     }
 }
 
-#[tracing::instrument(level = "info", skip(url))]
 /// Get the key of a url for object store cache prefix path.
 /// The credential info will be removed.
 fn get_url_key(url: &Url) -> String {

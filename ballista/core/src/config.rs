@@ -59,7 +59,6 @@ pub struct ConfigEntry {
 }
 
 impl ConfigEntry {
-    #[tracing::instrument(level = "info", skip(name, _description, _data_type, default_value))]
     fn new(
         name: String,
         _description: String,
@@ -81,7 +80,6 @@ pub struct BallistaConfigBuilder {
 }
 
 impl Default for BallistaConfigBuilder {
-    #[tracing::instrument(level = "info", skip())]
     /// Create a new config builder
     fn default() -> Self {
         Self {
@@ -91,7 +89,6 @@ impl Default for BallistaConfigBuilder {
 }
 
 impl BallistaConfigBuilder {
-    #[tracing::instrument(level = "info", skip(self, k, v))]
     /// Create a new config with an additional setting
     pub fn set(&self, k: &str, v: &str) -> Self {
         let mut settings = self.settings.clone();
@@ -99,7 +96,6 @@ impl BallistaConfigBuilder {
         Self { settings }
     }
 
-    #[tracing::instrument(level = "info", skip(self))]
     pub fn build(&self) -> Result<BallistaConfig> {
         BallistaConfig::with_settings(self.settings.clone())
     }
@@ -113,19 +109,16 @@ pub struct BallistaConfig {
 }
 
 impl BallistaConfig {
-    #[tracing::instrument(level = "info", skip())]
     /// Create a default configuration
     pub fn new() -> Result<Self> {
         Self::with_settings(HashMap::new())
     }
 
-    #[tracing::instrument(level = "info", skip())]
     /// Create a configuration builder
     pub fn builder() -> BallistaConfigBuilder {
         BallistaConfigBuilder::default()
     }
 
-    #[tracing::instrument(level = "info", skip(settings))]
     /// Create a new configuration based on key-value pairs
     pub fn with_settings(settings: HashMap<String, String>) -> Result<Self> {
         let supported_entries = BallistaConfig::valid_entries();
@@ -147,7 +140,6 @@ impl BallistaConfig {
         Ok(Self { settings })
     }
 
-    #[tracing::instrument(level = "info", skip(val, data_type))]
     pub fn parse_value(val: &str, data_type: DataType) -> ParseResult<()> {
         match data_type {
             DataType::UInt16 => {
@@ -181,7 +173,6 @@ impl BallistaConfig {
         Ok(())
     }
 
-    #[tracing::instrument(level = "info", skip())]
     /// All available configuration options
     pub fn valid_entries() -> HashMap<String, ConfigEntry> {
         let entries = vec![
@@ -230,67 +221,54 @@ impl BallistaConfig {
             .collect::<HashMap<_, _>>()
     }
 
-    #[tracing::instrument(level = "info", skip(self))]
     pub fn settings(&self) -> &HashMap<String, String> {
         &self.settings
     }
 
-    #[tracing::instrument(level = "info", skip(self))]
     pub fn default_shuffle_partitions(&self) -> usize {
         self.get_usize_setting(BALLISTA_DEFAULT_SHUFFLE_PARTITIONS)
     }
 
-    #[tracing::instrument(level = "info", skip(self))]
     pub fn default_plugin_dir(&self) -> String {
         self.get_string_setting(BALLISTA_PLUGIN_DIR)
     }
 
-    #[tracing::instrument(level = "info", skip(self))]
     pub fn default_batch_size(&self) -> usize {
         self.get_usize_setting(BALLISTA_DEFAULT_BATCH_SIZE)
     }
 
-    #[tracing::instrument(level = "info", skip(self))]
     pub fn hash_join_single_partition_threshold(&self) -> usize {
         self.get_usize_setting(BALLISTA_HASH_JOIN_SINGLE_PARTITION_THRESHOLD)
     }
 
-    #[tracing::instrument(level = "info", skip(self))]
     pub fn default_grpc_client_max_message_size(&self) -> usize {
         self.get_usize_setting(BALLISTA_GRPC_CLIENT_MAX_MESSAGE_SIZE)
     }
 
-    #[tracing::instrument(level = "info", skip(self))]
     pub fn repartition_joins(&self) -> bool {
         self.get_bool_setting(BALLISTA_REPARTITION_JOINS)
     }
 
-    #[tracing::instrument(level = "info", skip(self))]
     pub fn repartition_aggregations(&self) -> bool {
         self.get_bool_setting(BALLISTA_REPARTITION_AGGREGATIONS)
     }
 
-    #[tracing::instrument(level = "info", skip(self))]
     pub fn repartition_windows(&self) -> bool {
         self.get_bool_setting(BALLISTA_REPARTITION_WINDOWS)
     }
 
-    #[tracing::instrument(level = "info", skip(self))]
     pub fn parquet_pruning(&self) -> bool {
         self.get_bool_setting(BALLISTA_PARQUET_PRUNING)
     }
 
-    #[tracing::instrument(level = "info", skip(self))]
     pub fn collect_statistics(&self) -> bool {
         self.get_bool_setting(BALLISTA_COLLECT_STATISTICS)
     }
 
-    #[tracing::instrument(level = "info", skip(self))]
     pub fn default_with_information_schema(&self) -> bool {
         self.get_bool_setting(BALLISTA_WITH_INFORMATION_SCHEMA)
     }
 
-    #[tracing::instrument(level = "info", skip(self, key))]
     fn get_usize_setting(&self, key: &str) -> usize {
         if let Some(v) = self.settings.get(key) {
             // infallible because we validate all configs in the constructor
@@ -303,7 +281,6 @@ impl BallistaConfig {
         }
     }
 
-    #[tracing::instrument(level = "info", skip(self, key))]
     fn get_bool_setting(&self, key: &str) -> bool {
         if let Some(v) = self.settings.get(key) {
             // infallible because we validate all configs in the constructor
@@ -315,7 +292,6 @@ impl BallistaConfig {
             v.parse::<bool>().unwrap()
         }
     }
-    #[tracing::instrument(level = "info", skip(self, key))]
     fn get_string_setting(&self, key: &str) -> String {
         if let Some(v) = self.settings.get(key) {
             // infallible because we validate all configs in the constructor
@@ -340,14 +316,12 @@ pub enum TaskSchedulingPolicy {
 impl std::str::FromStr for TaskSchedulingPolicy {
     type Err = String;
 
-    #[tracing::instrument(level = "info", skip(s))]
     fn from_str(s: &str) -> std::result::Result<Self, Self::Err> {
         ArgEnum::from_str(s, true)
     }
 }
 
 impl parse_arg::ParseArgFromStr for TaskSchedulingPolicy {
-    #[tracing::instrument(level = "info", skip(writer))]
     fn describe_type<W: fmt::Write>(mut writer: W) -> fmt::Result {
         write!(writer, "The scheduler policy for the scheduler")
     }
@@ -366,14 +340,12 @@ pub enum LogRotationPolicy {
 impl std::str::FromStr for LogRotationPolicy {
     type Err = String;
 
-    #[tracing::instrument(level = "info", skip(s))]
     fn from_str(s: &str) -> std::result::Result<Self, Self::Err> {
         ArgEnum::from_str(s, true)
     }
 }
 
 impl parse_arg::ParseArgFromStr for LogRotationPolicy {
-    #[tracing::instrument(level = "info", skip(writer))]
     fn describe_type<W: fmt::Write>(mut writer: W) -> fmt::Result {
         write!(writer, "The log rotation policy")
     }
@@ -389,14 +361,12 @@ pub enum DataCachePolicy {
 impl std::str::FromStr for DataCachePolicy {
     type Err = String;
 
-    #[tracing::instrument(level = "info", skip(s))]
     fn from_str(s: &str) -> std::result::Result<Self, Self::Err> {
         ArgEnum::from_str(s, true)
     }
 }
 
 impl parse_arg::ParseArgFromStr for DataCachePolicy {
-    #[tracing::instrument(level = "info", skip(writer))]
     fn describe_type<W: fmt::Write>(mut writer: W) -> fmt::Result {
         write!(writer, "The data cache policy")
     }

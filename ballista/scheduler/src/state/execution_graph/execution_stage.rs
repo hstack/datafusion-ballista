@@ -65,7 +65,6 @@ pub(crate) enum ExecutionStage {
 }
 
 impl Debug for ExecutionStage {
-    #[tracing::instrument(level = "info", skip(self, f))]
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match self {
             ExecutionStage::UnResolved(unresolved_stage) => unresolved_stage.fmt(f),
@@ -78,7 +77,6 @@ impl Debug for ExecutionStage {
 }
 
 impl ExecutionStage {
-    #[tracing::instrument(level = "info", skip(self))]
     /// Get the name of the variant
     pub(crate) fn variant_name(&self) -> &str {
         match self {
@@ -90,7 +88,6 @@ impl ExecutionStage {
         }
     }
 
-    #[tracing::instrument(level = "info", skip(self))]
     /// Get the query plan for this query stage
     pub(crate) fn plan(&self) -> &dyn ExecutionPlan {
         match self {
@@ -242,7 +239,6 @@ pub(crate) struct TaskInfo {
 }
 
 impl UnresolvedStage {
-    #[tracing::instrument(level = "info", skip(stage_id, plan, output_links, child_stage_ids))]
     pub(super) fn new(
         stage_id: usize,
         plan: Arc<dyn ExecutionPlan>,
@@ -264,7 +260,6 @@ impl UnresolvedStage {
         }
     }
 
-    #[tracing::instrument(level = "info", skip(stage_id, stage_attempt_num, plan, output_links, inputs, last_attempt_failure_reasons))]
     pub(super) fn new_with_inputs(
         stage_id: usize,
         stage_attempt_num: usize,
@@ -283,7 +278,6 @@ impl UnresolvedStage {
         }
     }
 
-    #[tracing::instrument(level = "info", skip(self, stage_id, locations))]
     /// Add input partitions published from an input stage.
     pub(super) fn add_input_partitions(
         &mut self,
@@ -301,7 +295,6 @@ impl UnresolvedStage {
         Ok(())
     }
 
-    #[tracing::instrument(level = "info", skip(self, input_stage_id, _input_partition_id, executor_id))]
     /// Remove input partitions from an input stage on a given executor.
     /// Return the HashSet of removed map partition ids
     pub(super) fn remove_input_partitions(
@@ -331,7 +324,6 @@ impl UnresolvedStage {
         }
     }
 
-    #[tracing::instrument(level = "info", skip(self, stage_id))]
     /// Marks the input stage ID as complete.
     pub(super) fn complete_input(&mut self, stage_id: usize) {
         if let Some(input) = self.inputs.get_mut(&stage_id) {
@@ -339,14 +331,12 @@ impl UnresolvedStage {
         }
     }
 
-    #[tracing::instrument(level = "info", skip(self))]
     /// Returns true if all inputs are complete and we can resolve all
     /// UnresolvedShuffleExec operators to ShuffleReadExec
     pub(super) fn resolvable(&self) -> bool {
         self.inputs.iter().all(|(_, input)| input.is_complete())
     }
 
-    #[tracing::instrument(level = "info", skip(self))]
     /// Change to the resolved state
     pub(super) fn to_resolved(&self) -> Result<ResolvedStage> {
         let input_locations = self
@@ -377,7 +367,6 @@ impl UnresolvedStage {
         ))
     }
 
-    #[tracing::instrument(level = "info", skip(stage, codec, session_ctx))]
     pub(super) fn decode<T: 'static + AsLogicalPlan, U: 'static + AsExecutionPlan>(
         stage: protobuf::UnResolvedStage,
         codec: &BallistaCodec<T, U>,
@@ -404,7 +393,6 @@ impl UnresolvedStage {
         })
     }
 
-    #[tracing::instrument(level = "info", skip(stage, codec))]
     pub(super) fn encode<T: 'static + AsLogicalPlan, U: 'static + AsExecutionPlan>(
         stage: UnresolvedStage,
         codec: &BallistaCodec<T, U>,
@@ -429,7 +417,6 @@ impl UnresolvedStage {
 }
 
 impl Debug for UnresolvedStage {
-    #[tracing::instrument(level = "info", skip(self, f))]
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         let plan = DisplayableExecutionPlan::new(self.plan.as_ref()).indent(false);
 
@@ -446,7 +433,6 @@ impl Debug for UnresolvedStage {
 }
 
 impl ResolvedStage {
-    #[tracing::instrument(level = "info", skip(stage_id, stage_attempt_num, plan, output_links, inputs, last_attempt_failure_reasons))]
     pub(super) fn new(
         stage_id: usize,
         stage_attempt_num: usize,
@@ -468,7 +454,6 @@ impl ResolvedStage {
         }
     }
 
-    #[tracing::instrument(level = "info", skip(self))]
     /// Change to the running state
     pub(super) fn to_running(&self) -> RunningStage {
         RunningStage::new(
@@ -481,7 +466,6 @@ impl ResolvedStage {
         )
     }
 
-    #[tracing::instrument(level = "info", skip(self))]
     /// Change to the unresolved state
     pub(super) fn to_unresolved(&self) -> Result<UnresolvedStage> {
         let new_plan = crate::planner::rollback_resolved_shuffles(self.plan.clone())?;
@@ -497,7 +481,6 @@ impl ResolvedStage {
         Ok(unresolved)
     }
 
-    #[tracing::instrument(level = "info", skip(stage, codec, session_ctx))]
     pub(super) fn decode<T: 'static + AsLogicalPlan, U: 'static + AsExecutionPlan>(
         stage: protobuf::ResolvedStage,
         codec: &BallistaCodec<T, U>,
@@ -525,7 +508,6 @@ impl ResolvedStage {
         })
     }
 
-    #[tracing::instrument(level = "info", skip(stage, codec))]
     pub(super) fn encode<T: 'static + AsLogicalPlan, U: 'static + AsExecutionPlan>(
         stage: ResolvedStage,
         codec: &BallistaCodec<T, U>,
@@ -551,7 +533,6 @@ impl ResolvedStage {
 }
 
 impl Debug for ResolvedStage {
-    #[tracing::instrument(level = "info", skip(self, f))]
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         let plan = DisplayableExecutionPlan::new(self.plan.as_ref()).indent(false);
 
@@ -564,7 +545,6 @@ impl Debug for ResolvedStage {
 }
 
 impl RunningStage {
-    #[tracing::instrument(level = "info", skip(stage_id, stage_attempt_num, plan, partitions, output_links, inputs))]
     pub(super) fn new(
         stage_id: usize,
         stage_attempt_num: usize,
@@ -586,7 +566,6 @@ impl RunningStage {
         }
     }
 
-    #[tracing::instrument(level = "info", skip(self))]
     pub(super) fn to_successful(&self) -> SuccessfulStage {
         let task_infos = self
             .task_infos
@@ -617,7 +596,6 @@ impl RunningStage {
         }
     }
 
-    #[tracing::instrument(level = "info", skip(self, error_message))]
     pub(super) fn to_failed(&self, error_message: String) -> FailedStage {
         FailedStage {
             stage_id: self.stage_id,
@@ -631,7 +609,6 @@ impl RunningStage {
         }
     }
 
-    #[tracing::instrument(level = "info", skip(self))]
     /// Change to the resolved state and bump the stage attempt number
     pub(super) fn to_resolved(&self) -> ResolvedStage {
         ResolvedStage::new(
@@ -644,7 +621,6 @@ impl RunningStage {
         )
     }
 
-    #[tracing::instrument(level = "info", skip(self, failure_reasons))]
     /// Change to the unresolved state and bump the stage attempt number
     pub(super) fn to_unresolved(
         &self,
@@ -663,7 +639,6 @@ impl RunningStage {
         Ok(unresolved)
     }
 
-    #[tracing::instrument(level = "info", skip(self))]
     /// Returns `true` if all tasks for this stage are successful
     pub(super) fn is_successful(&self) -> bool {
         self.task_infos.iter().all(|info| {
@@ -677,7 +652,6 @@ impl RunningStage {
         })
     }
 
-    #[tracing::instrument(level = "info", skip(self))]
     /// Returns the number of successful tasks
     pub(super) fn successful_tasks(&self) -> usize {
         self.task_infos
@@ -694,13 +668,11 @@ impl RunningStage {
             .count()
     }
 
-    #[tracing::instrument(level = "info", skip(self))]
     /// Returns the number of scheduled tasks
     pub(super) fn scheduled_tasks(&self) -> usize {
         self.task_infos.iter().filter(|s| s.is_some()).count()
     }
 
-    #[tracing::instrument(level = "info", skip(self))]
     /// Returns a vector of currently running tasks in this stage
     pub(super) fn running_tasks(&self) -> Vec<(usize, usize, usize, String)> {
         self.task_infos
@@ -716,7 +688,6 @@ impl RunningStage {
             .collect()
     }
 
-    #[tracing::instrument(level = "info", skip(self))]
     /// Returns the number of tasks in this stage which are available for scheduling.
     /// If the stage is not yet resolved, then this will return `0`, otherwise it will
     /// return the number of tasks where the task info is not yet set.
@@ -724,7 +695,6 @@ impl RunningStage {
         self.task_infos.iter().filter(|s| s.is_none()).count()
     }
 
-    #[tracing::instrument(level = "info", skip(self, partition_id, status))]
     /// Update the TaskInfo for task partition
     pub(super) fn update_task_info(
         &mut self,
@@ -766,7 +736,6 @@ impl RunningStage {
         true
     }
 
-    #[tracing::instrument(level = "info", skip(self, partition, metrics))]
     /// update and combine the task metrics to the stage metrics
     pub(super) fn update_task_metrics(
         &mut self,
@@ -811,7 +780,6 @@ impl RunningStage {
         Ok(())
     }
 
-    #[tracing::instrument(level = "info", skip(first, second, partition))]
     pub(super) fn combine_metrics_set(
         first: &mut MetricsSet,
         second: Vec<MetricValue>,
@@ -825,19 +793,16 @@ impl RunningStage {
         first.aggregate_by_name()
     }
 
-    #[tracing::instrument(level = "info", skip(self, partition_id))]
     pub(super) fn task_failure_number(&self, partition_id: usize) -> usize {
         self.task_failure_numbers[partition_id]
     }
 
-    #[tracing::instrument(level = "info", skip(self, partition_id))]
     /// Reset the task info for the given task partition. This should be called when a task failed and need to be
     /// re-scheduled.
     pub fn reset_task_info(&mut self, partition_id: usize) {
         self.task_infos[partition_id] = None;
     }
 
-    #[tracing::instrument(level = "info", skip(self, executor))]
     /// Reset the running and completed tasks on a given executor
     /// Returns the number of running tasks that were reset
     pub fn reset_tasks(&mut self, executor: &str) -> usize {
@@ -868,7 +833,6 @@ impl RunningStage {
         reset
     }
 
-    #[tracing::instrument(level = "info", skip(self, input_stage_id, _input_partition_id, executor_id))]
     /// Remove input partitions from an input stage on a given executor.
     /// Return the HashSet of removed map partition ids
     pub(super) fn remove_input_partitions(
@@ -900,7 +864,6 @@ impl RunningStage {
 }
 
 impl Debug for RunningStage {
-    #[tracing::instrument(level = "info", skip(self, f))]
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         let plan = DisplayableExecutionPlan::new(self.plan.as_ref()).indent(false);
 
@@ -919,7 +882,6 @@ impl Debug for RunningStage {
 }
 
 impl SuccessfulStage {
-    #[tracing::instrument(level = "info", skip(self))]
     /// Change to the running state and bump the stage attempt number
     pub fn to_running(&self) -> RunningStage {
         let mut task_infos: Vec<Option<TaskInfo>> = Vec::new();
@@ -951,7 +913,6 @@ impl SuccessfulStage {
         }
     }
 
-    #[tracing::instrument(level = "info", skip(self, executor))]
     /// Reset the successful tasks on a given executor
     /// Returns the number of running tasks that were reset
     pub fn reset_tasks(&mut self, executor: &str) -> usize {
@@ -990,7 +951,6 @@ impl SuccessfulStage {
         reset
     }
 
-    #[tracing::instrument(level = "info", skip(stage, codec, session_ctx))]
     pub(super) fn decode<T: 'static + AsLogicalPlan, U: 'static + AsExecutionPlan>(
         stage: protobuf::SuccessfulStage,
         codec: &BallistaCodec<T, U>,
@@ -1028,7 +988,6 @@ impl SuccessfulStage {
         })
     }
 
-    #[tracing::instrument(level = "info", skip(_job_id, stage, codec))]
     pub(super) fn encode<T: 'static + AsLogicalPlan, U: 'static + AsExecutionPlan>(
         _job_id: String,
         stage: SuccessfulStage,
@@ -1068,7 +1027,6 @@ impl SuccessfulStage {
 }
 
 impl Debug for SuccessfulStage {
-    #[tracing::instrument(level = "info", skip(self, f))]
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         let plan = DisplayableBallistaExecutionPlan::new(
             self.plan.as_ref(),
@@ -1085,7 +1043,6 @@ impl Debug for SuccessfulStage {
 }
 
 impl FailedStage {
-    #[tracing::instrument(level = "info", skip(self))]
     /// Returns the number of successful tasks
     pub(super) fn successful_tasks(&self) -> usize {
         self.task_infos
@@ -1101,13 +1058,11 @@ impl FailedStage {
             })
             .count()
     }
-    #[tracing::instrument(level = "info", skip(self))]
     /// Returns the number of scheduled tasks
     pub(super) fn scheduled_tasks(&self) -> usize {
         self.task_infos.iter().filter(|s| s.is_some()).count()
     }
 
-    #[tracing::instrument(level = "info", skip(self))]
     /// Returns the number of tasks in this stage which are available for scheduling.
     /// If the stage is not yet resolved, then this will return `0`, otherwise it will
     /// return the number of tasks where the task status is not yet set.
@@ -1115,7 +1070,6 @@ impl FailedStage {
         self.task_infos.iter().filter(|s| s.is_none()).count()
     }
 
-    #[tracing::instrument(level = "info", skip(stage, codec, session_ctx))]
     pub(super) fn decode<T: 'static + AsLogicalPlan, U: 'static + AsExecutionPlan>(
         stage: protobuf::FailedStage,
         codec: &BallistaCodec<T, U>,
@@ -1156,7 +1110,6 @@ impl FailedStage {
         })
     }
 
-    #[tracing::instrument(level = "info", skip(_job_id, stage, codec))]
     pub(super) fn encode<T: 'static + AsLogicalPlan, U: 'static + AsExecutionPlan>(
         _job_id: String,
         stage: FailedStage,
@@ -1198,7 +1151,6 @@ impl FailedStage {
 }
 
 impl Debug for FailedStage {
-    #[tracing::instrument(level = "info", skip(self, f))]
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         let plan = DisplayableExecutionPlan::new(self.plan.as_ref()).indent(false);
 
@@ -1217,7 +1169,6 @@ impl Debug for FailedStage {
     }
 }
 
-#[tracing::instrument(level = "info", skip(plan))]
 /// Get the total number of partitions for a stage with plan.
 /// Only for [`ShuffleWriterExec`], the input partition count and the output partition count
 /// will be different. Here, we should use the input partition count.
@@ -1241,7 +1192,6 @@ pub(crate) struct StageOutput {
 }
 
 impl StageOutput {
-    #[tracing::instrument(level = "info", skip())]
     pub(super) fn new() -> Self {
         Self {
             partition_locations: HashMap::new(),
@@ -1249,7 +1199,6 @@ impl StageOutput {
         }
     }
 
-    #[tracing::instrument(level = "info", skip(self, partition_location))]
     /// Add a `PartitionLocation` to the `StageOutput`
     pub(super) fn add_partition(&mut self, partition_location: PartitionLocation) {
         if let Some(parts) = self
@@ -1265,13 +1214,11 @@ impl StageOutput {
         }
     }
 
-    #[tracing::instrument(level = "info", skip(self))]
     pub(super) fn is_complete(&self) -> bool {
         self.complete
     }
 }
 
-#[tracing::instrument(level = "info", skip(stage_inputs))]
 fn decode_inputs(
     stage_inputs: Vec<GraphStageInput>,
 ) -> Result<HashMap<usize, StageOutput>> {
@@ -1304,7 +1251,6 @@ fn decode_inputs(
     Ok(inputs)
 }
 
-#[tracing::instrument(level = "info", skip(stage_inputs))]
 fn encode_inputs(
     stage_inputs: HashMap<usize, StageOutput>,
 ) -> Result<Vec<GraphStageInput>> {
@@ -1331,7 +1277,6 @@ fn encode_inputs(
     Ok(inputs)
 }
 
-#[tracing::instrument(level = "info", skip(task_info))]
 fn decode_taskinfo(task_info: protobuf::TaskInfo) -> TaskInfo {
     let task_info_status = match task_info.status {
         Some(task_info::Status::Running(running)) => {
@@ -1357,7 +1302,6 @@ fn decode_taskinfo(task_info: protobuf::TaskInfo) -> TaskInfo {
     }
 }
 
-#[tracing::instrument(level = "info", skip(task_info, partition_id))]
 fn encode_taskinfo(task_info: TaskInfo, partition_id: usize) -> protobuf::TaskInfo {
     let task_info_status = match task_info.task_status {
         task_status::Status::Running(running) => task_info::Status::Running(running),

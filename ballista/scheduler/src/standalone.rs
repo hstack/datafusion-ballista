@@ -32,7 +32,6 @@ use std::net::SocketAddr;
 use std::sync::Arc;
 use tokio::net::TcpListener;
 
-#[tracing::instrument(level = "info", skip())]
 pub async fn new_standalone_scheduler() -> Result<SocketAddr> {
     let metrics_collector = default_metrics_collector()?;
 

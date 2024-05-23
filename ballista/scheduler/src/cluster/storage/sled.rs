@@ -37,7 +37,6 @@ pub struct SledClient {
 }
 
 impl SledClient {
-    #[tracing::instrument(level = "info", skip(path))]
     /// Creates a SledClient that saves data to the specified file.
     pub fn try_new<P: AsRef<std::path::Path>>(path: P) -> Result<Self> {
         Ok(Self {
@@ -46,7 +45,6 @@ impl SledClient {
         })
     }
 
-    #[tracing::instrument(level = "info", skip())]
     /// Creates a SledClient that saves data to a temp file.
     pub fn try_new_temporary() -> Result<Self> {
         Ok(Self {
@@ -59,7 +57,6 @@ impl SledClient {
     }
 }
 
-#[tracing::instrument(level = "info", skip(e))]
 fn sled_to_ballista_error(e: sled::Error) -> BallistaError {
     match e {
         sled::Error::Io(io) => BallistaError::IoError(io),
@@ -69,7 +66,6 @@ fn sled_to_ballista_error(e: sled::Error) -> BallistaError {
 
 #[async_trait]
 impl KeyValueStore for SledClient {
-    #[tracing::instrument(level = "info", skip(self, keyspace, key))]
     async fn get(&self, keyspace: Keyspace, key: &str) -> Result<Vec<u8>> {
         let key = format!("/{keyspace:?}/{key}");
         Ok(self
@@ -80,7 +76,6 @@ impl KeyValueStore for SledClient {
             .unwrap_or_default())
     }
 
-    #[tracing::instrument(level = "info", skip(self, keyspace, prefix))]
     async fn get_from_prefix(
         &self,
         keyspace: Keyspace,
@@ -102,7 +97,6 @@ impl KeyValueStore for SledClient {
             .map_err(|e| ballista_error(&format!("sled error {e:?}")))?)
     }
 
-    #[tracing::instrument(level = "info", skip(self, keyspace, limit))]
     async fn scan(
         &self,
         keyspace: Keyspace,
@@ -141,7 +135,6 @@ impl KeyValueStore for SledClient {
         }
     }
 
-    #[tracing::instrument(level = "info", skip(self, keyspace))]
     async fn scan_keys(&self, keyspace: Keyspace) -> Result<HashSet<String>> {
         let prefix = format!("/{keyspace:?}/");
         Ok(self
@@ -160,7 +153,6 @@ impl KeyValueStore for SledClient {
             .map_err(|e| ballista_error(&format!("sled error {e:?}")))?)
     }
 
-    #[tracing::instrument(level = "info", skip(self, keyspace, key, value))]
     async fn put(&self, keyspace: Keyspace, key: String, value: Vec<u8>) -> Result<()> {
         let key = format!("/{keyspace:?}/{key}");
         self.db
@@ -172,7 +164,6 @@ impl KeyValueStore for SledClient {
             .map(|_| ())
     }
 
-    #[tracing::instrument(level = "info", skip(self, ops))]
     async fn apply_txn(&self, ops: Vec<(Operation, Keyspace, String)>) -> Result<()> {
         let mut batch = sled::Batch::default();
 
@@ -190,7 +181,6 @@ impl KeyValueStore for SledClient {
         })
     }
 
-    #[tracing::instrument(level = "info", skip(self, from_keyspace, to_keyspace, key))]
     async fn mv(
         &self,
         from_keyspace: Keyspace,
@@ -223,7 +213,6 @@ impl KeyValueStore for SledClient {
         }
     }
 
-    #[tracing::instrument(level = "info", skip(self, keyspace, key))]
     async fn lock(&self, keyspace: Keyspace, key: &str) -> Result<Box<dyn Lock>> {
         let mut mlock = self.locks.lock().await;
         let lock_key = format!("/{keyspace:?}/{key}");
@@ -236,7 +225,6 @@ impl KeyValueStore for SledClient {
         }
     }
 
-    #[tracing::instrument(level = "info", skip(self, keyspace, prefix))]
     async fn watch(&self, keyspace: Keyspace, prefix: String) -> Result<Box<dyn Watch>> {
         let prefix = format!("/{keyspace:?}/{prefix}");
 
@@ -245,7 +233,6 @@ impl KeyValueStore for SledClient {
         }))
     }
 
-    #[tracing::instrument(level = "info", skip(self, keyspace, key))]
     async fn delete(&self, keyspace: Keyspace, key: &str) -> Result<()> {
         let key = format!("/{keyspace:?}/{key}");
         self.db.remove(key).map_err(|e| {
@@ -262,7 +249,6 @@ struct SledWatch {
 
 #[tonic::async_trait]
 impl Watch for SledWatch {
-    #[tracing::instrument(level = "info", skip(self))]
     async fn cancel(&mut self) -> Result<()> {
         Ok(())
     }
@@ -271,7 +257,6 @@ impl Watch for SledWatch {
 impl Stream for SledWatch {
     type Item = WatchEvent;
 
-    #[tracing::instrument(level = "info", skip(self, cx))]
     fn poll_next(
         self: std::pin::Pin<&mut Self>,
         cx: &mut std::task::Context<'_>,
@@ -290,7 +275,6 @@ impl Stream for SledWatch {
         }
     }
 
-    #[tracing::instrument(level = "info", skip(self))]
     fn size_hint(&self) -> (usize, Option<usize>) {
         self.subscriber.size_hint()
     }
@@ -305,7 +289,6 @@ mod tests {
     use futures::StreamExt;
     use std::result::Result;
 
-    #[tracing::instrument(level = "info", skip())]
     fn create_instance() -> Result<SledClient, Box<dyn std::error::Error>> {
         Ok(SledClient::try_new_temporary()?)
     }

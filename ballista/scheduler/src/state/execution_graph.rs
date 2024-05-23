@@ -141,7 +141,6 @@ pub struct RunningTaskInfo {
 }
 
 impl ExecutionGraph {
-    #[tracing::instrument(level = "info", skip(scheduler_id, job_id, job_name, session_id, plan, queued_at))]
     pub fn new(
         scheduler_id: &str,
         job_id: &str,
@@ -186,54 +185,44 @@ impl ExecutionGraph {
         })
     }
 
-    #[tracing::instrument(level = "info", skip(self))]
     pub fn job_id(&self) -> &str {
         self.job_id.as_str()
     }
 
-    #[tracing::instrument(level = "info", skip(self))]
     pub fn job_name(&self) -> &str {
         self.job_name.as_str()
     }
 
-    #[tracing::instrument(level = "info", skip(self))]
     pub fn session_id(&self) -> &str {
         self.session_id.as_str()
     }
 
-    #[tracing::instrument(level = "info", skip(self))]
     pub fn status(&self) -> &JobStatus {
         &self.status
     }
 
-    #[tracing::instrument(level = "info", skip(self))]
     pub fn start_time(&self) -> u64 {
         self.start_time
     }
 
-    #[tracing::instrument(level = "info", skip(self))]
     pub fn end_time(&self) -> u64 {
         self.end_time
     }
 
-    #[tracing::instrument(level = "info", skip(self))]
     pub fn stage_count(&self) -> usize {
         self.stages.len()
     }
 
-    #[tracing::instrument(level = "info", skip(self))]
     pub fn next_task_id(&mut self) -> usize {
         let new_tid = self.task_id_gen;
         self.task_id_gen += 1;
         new_tid
     }
 
-    #[tracing::instrument(level = "info", skip(self))]
     pub(crate) fn stages(&self) -> &HashMap<usize, ExecutionStage> {
         &self.stages
     }
 
-    #[tracing::instrument(level = "info", skip(self))]
     /// An ExecutionGraph is successful if all its stages are successful
     pub fn is_successful(&self) -> bool {
         self.stages
@@ -241,14 +230,12 @@ impl ExecutionGraph {
             .all(|s| matches!(s, ExecutionStage::Successful(_)))
     }
 
-    #[tracing::instrument(level = "info", skip(self))]
     pub fn is_complete(&self) -> bool {
         self.stages
             .values()
             .all(|s| matches!(s, ExecutionStage::Successful(_)))
     }
 
-    #[tracing::instrument(level = "info", skip(self))]
     /// Revive the execution graph by converting the resolved stages to running stages
     /// If any stages are converted, return true; else false.
     pub fn revive(&mut self) -> bool {
@@ -277,7 +264,6 @@ impl ExecutionGraph {
         }
     }
 
-    #[tracing::instrument(level = "info", skip(self, executor, task_statuses, max_task_failures, max_stage_failures))]
     /// Update task statuses and task metrics in the graph.
     /// This will also push shuffle partitions to their respective shuffle read stages.
     pub fn update_task_status(
@@ -668,7 +654,6 @@ impl ExecutionGraph {
         })
     }
 
-    #[tracing::instrument(level = "info", skip(self, updated_stages))]
     /// Processing stage status update after task status changing
     fn processing_stages_update(
         &mut self,
@@ -737,7 +722,6 @@ impl ExecutionGraph {
         Ok(events)
     }
 
-    #[tracing::instrument(level = "info", skip(self, stage_id, is_completed, locations, output_links))]
     /// Return a Vec of resolvable stage ids
     fn update_stage_output_links(
         &mut self,
@@ -785,7 +769,6 @@ impl ExecutionGraph {
         Ok(resolved_stages)
     }
 
-    #[tracing::instrument(level = "info", skip(self))]
     /// Return all the currently running stage ids
     pub fn running_stages(&self) -> Vec<usize> {
         self.stages
@@ -800,7 +783,6 @@ impl ExecutionGraph {
             .collect::<Vec<_>>()
     }
 
-    #[tracing::instrument(level = "info", skip(self))]
     /// Return all currently running tasks along with the executor ID on which they are assigned
     pub fn running_tasks(&self) -> Vec<RunningTaskInfo> {
         self.stages
@@ -827,7 +809,6 @@ impl ExecutionGraph {
             .collect::<Vec<RunningTaskInfo>>()
     }
 
-    #[tracing::instrument(level = "info", skip(self))]
     /// Total number of tasks in this plan that are ready for scheduling
     pub fn available_tasks(&self) -> usize {
         self.stages
@@ -842,7 +823,6 @@ impl ExecutionGraph {
             .sum()
     }
 
-    #[tracing::instrument(level = "info", skip(self, executor_id))]
     /// Get next task that can be assigned to the given executor.
     /// This method should only be called when the resulting task is immediately
     /// being launched as the status will be set to Running and it will not be
@@ -951,7 +931,6 @@ impl ExecutionGraph {
         Ok(next_task)
     }
 
-    #[tracing::instrument(level = "info", skip(self, black_list))]
     pub(crate) fn fetch_running_stage(
         &mut self,
         black_list: &[usize],
@@ -982,7 +961,6 @@ impl ExecutionGraph {
         }
     }
 
-    #[tracing::instrument(level = "info", skip(self, black_list))]
     fn get_running_stage_id(&mut self, black_list: &[usize]) -> Option<usize> {
         let mut running_stage_id = self.stages.iter().find_map(|(stage_id, stage)| {
             if black_list.contains(stage_id) {
@@ -1011,17 +989,14 @@ impl ExecutionGraph {
         running_stage_id
     }
 
-    #[tracing::instrument(level = "info", skip(self, status))]
     pub fn update_status(&mut self, status: JobStatus) {
         self.status = status;
     }
 
-    #[tracing::instrument(level = "info", skip(self))]
     pub fn output_locations(&self) -> Vec<PartitionLocation> {
         self.output_locations.clone()
     }
 
-    #[tracing::instrument(level = "info", skip(self, executor_id))]
     /// Reset running and successful stages on a given executor
     /// This will first check the unresolved/resolved/running stages and reset the running tasks and successful tasks.
     /// Then it will check the successful stage and whether there are running parent stages need to read shuffle from it.
@@ -1045,7 +1020,6 @@ impl ExecutionGraph {
         }
     }
 
-    #[tracing::instrument(level = "info", skip(self, executor_id))]
     fn reset_stages_internal(
         &mut self,
         executor_id: &str,
@@ -1174,7 +1148,6 @@ impl ExecutionGraph {
         Ok((reset_stage, all_running_tasks))
     }
 
-    #[tracing::instrument(level = "info", skip(self, stage_id))]
     /// Convert unresolved stage to be resolved
     pub fn resolve_stage(&mut self, stage_id: usize) -> Result<bool> {
         if let Some(ExecutionStage::UnResolved(stage)) = self.stages.remove(&stage_id) {
@@ -1191,7 +1164,6 @@ impl ExecutionGraph {
         }
     }
 
-    #[tracing::instrument(level = "info", skip(self, stage_id))]
     /// Convert running stage to be successful
     pub fn succeed_stage(&mut self, stage_id: usize) -> bool {
         if let Some(ExecutionStage::Running(stage)) = self.stages.remove(&stage_id) {
@@ -1209,7 +1181,6 @@ impl ExecutionGraph {
         }
     }
 
-    #[tracing::instrument(level = "info", skip(self, stage_id, err_msg))]
     /// Convert running stage to be failed
     pub fn fail_stage(&mut self, stage_id: usize, err_msg: String) -> bool {
         if let Some(ExecutionStage::Running(stage)) = self.stages.remove(&stage_id) {
@@ -1226,7 +1197,6 @@ impl ExecutionGraph {
         }
     }
 
-    #[tracing::instrument(level = "info", skip(self, stage_id, failure_reasons))]
     /// Convert running stage to be unresolved,
     /// Returns a Vec of RunningTaskInfo for running tasks in this stage.
     pub fn rollback_running_stage(
@@ -1263,7 +1233,6 @@ impl ExecutionGraph {
         }
     }
 
-    #[tracing::instrument(level = "info", skip(self, stage_id))]
     /// Convert resolved stage to be unresolved
     pub fn rollback_resolved_stage(&mut self, stage_id: usize) -> Result<bool> {
         if let Some(ExecutionStage::Resolved(stage)) = self.stages.remove(&stage_id) {
@@ -1280,7 +1249,6 @@ impl ExecutionGraph {
         }
     }
 
-    #[tracing::instrument(level = "info", skip(self, stage_id))]
     /// Convert successful stage to be running
     pub fn rerun_successful_stage(&mut self, stage_id: usize) -> bool {
         if let Some(ExecutionStage::Successful(stage)) = self.stages.remove(&stage_id) {
@@ -1297,7 +1265,6 @@ impl ExecutionGraph {
         }
     }
 
-    #[tracing::instrument(level = "info", skip(self, error))]
     /// fail job with error message
     pub fn fail_job(&mut self, error: String) {
         self.status = JobStatus {
@@ -1312,7 +1279,6 @@ impl ExecutionGraph {
         };
     }
 
-    #[tracing::instrument(level = "info", skip(self))]
     /// Mark the job success
     pub fn succeed_job(&mut self) -> Result<()> {
         if !self.is_successful() {
@@ -1347,13 +1313,11 @@ impl ExecutionGraph {
         Ok(())
     }
 
-    #[tracing::instrument(level = "info", skip(self, stage_id))]
     /// Clear the stage failure count for this stage if the stage is finally success
     fn clear_stage_failure(&mut self, stage_id: usize) {
         self.failed_stage_attempts.remove(&stage_id);
     }
 
-    #[tracing::instrument(level = "info", skip(proto, codec, session_ctx))]
     pub(crate) async fn decode_execution_graph<
         T: 'static + AsLogicalPlan,
         U: 'static + AsExecutionPlan,
@@ -1435,7 +1399,6 @@ impl ExecutionGraph {
         })
     }
 
-    #[tracing::instrument(level = "info", skip(graph, codec))]
     /// Running stages will not be persisted so that will not be encoded.
     /// Running stages will be convert back to the resolved stages to be encoded and persisted
     pub(crate) fn encode_execution_graph<
@@ -1514,7 +1477,6 @@ impl ExecutionGraph {
 }
 
 impl Debug for ExecutionGraph {
-    #[tracing::instrument(level = "info", skip(self, f))]
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         let stages = self
             .stages
@@ -1527,7 +1489,6 @@ impl Debug for ExecutionGraph {
     }
 }
 
-#[tracing::instrument(level = "info", skip(executor_id, task_id))]
 pub(crate) fn create_task_info(executor_id: String, task_id: usize) -> TaskInfo {
     TaskInfo {
         task_id,
@@ -1559,7 +1520,6 @@ struct ExecutionStageBuilder {
 }
 
 impl ExecutionStageBuilder {
-    #[tracing::instrument(level = "info", skip())]
     pub fn new() -> Self {
         Self {
             current_stage_id: 0,
@@ -1568,7 +1528,6 @@ impl ExecutionStageBuilder {
         }
     }
 
-    #[tracing::instrument(level = "info", skip(self, stages))]
     pub fn build(
         mut self,
         stages: Vec<Arc<ShuffleWriterExec>>,
@@ -1616,7 +1575,6 @@ impl ExecutionStageBuilder {
 impl ExecutionPlanVisitor for ExecutionStageBuilder {
     type Error = BallistaError;
 
-    #[tracing::instrument(level = "info", skip(self, plan))]
     fn pre_visit(
         &mut self,
         plan: &dyn ExecutionPlan,
@@ -1664,7 +1622,6 @@ pub struct TaskDescription {
 }
 
 impl Debug for TaskDescription {
-    #[tracing::instrument(level = "info", skip(self, f))]
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         let plan = DisplayableExecutionPlan::new(self.plan.as_ref()).indent(false);
         write!(
@@ -1684,7 +1641,6 @@ impl Debug for TaskDescription {
 }
 
 impl TaskDescription {
-    #[tracing::instrument(level = "info", skip(self))]
     pub fn get_output_partition_number(&self) -> usize {
         let shuffle_writer = self
             .plan
@@ -1698,7 +1654,6 @@ impl TaskDescription {
     }
 }
 
-#[tracing::instrument(level = "info", skip(job_id, map_partition_id, stage_id, executor, shuffles))]
 fn partition_to_location(
     job_id: &str,
     map_partition_id: usize,
@@ -2877,7 +2832,6 @@ mod test {
     //     todo!()
     // }
 
-    #[tracing::instrument(level = "info", skip(graph))]
     fn drain_tasks(graph: &mut ExecutionGraph) -> Result<()> {
         let executor = mock_executor("executor-id1".to_string());
         while let Some(task) = graph.pop_next_task(&executor.id)? {

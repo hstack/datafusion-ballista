@@ -50,14 +50,12 @@ pub struct ExecutionGraphDot<'a> {
 }
 
 impl<'a> ExecutionGraphDot<'a> {
-    #[tracing::instrument(level = "info", skip(graph))]
     /// Create a DOT graph from the provided ExecutionGraph
     pub fn generate(graph: &'a ExecutionGraph) -> Result<String, fmt::Error> {
         let mut dot = Self { graph };
         dot._generate()
     }
 
-    #[tracing::instrument(level = "info", skip(graph, stage_id))]
     /// Create a DOT graph for one query stage from the provided ExecutionGraph
     pub fn generate_for_query_stage(
         graph: &ExecutionGraph,
@@ -75,7 +73,6 @@ impl<'a> ExecutionGraphDot<'a> {
         }
     }
 
-    #[tracing::instrument(level = "info", skip(self))]
     fn _generate(&mut self) -> Result<String, fmt::Error> {
         // sort the stages by key for deterministic output for tests
         let stages = self.graph.stages();
@@ -126,7 +123,6 @@ impl<'a> ExecutionGraphDot<'a> {
     }
 }
 
-#[tracing::instrument(level = "info", skip(f, prefix, plan, i))]
 /// Write the query tree for a single stage and build metadata needed to later draw
 /// the links between the stages
 fn write_stage_plan(
@@ -142,7 +138,6 @@ fn write_stage_plan(
     Ok(state)
 }
 
-#[tracing::instrument(level = "info", skip(f, prefix, plan, i, state))]
 fn write_plan_recursive(
     f: &mut String,
     prefix: &str,
@@ -202,14 +197,12 @@ struct StagePlanState {
     readers: HashMap<String, usize>,
 }
 
-#[tracing::instrument(level = "info", skip(str))]
 /// Make strings dot-friendly
 fn sanitize_dot_label(str: &str) -> String {
     // TODO make max length configurable eventually
     sanitize(str, Some(100))
 }
 
-#[tracing::instrument(level = "info", skip(str, max_len))]
 /// Make strings dot-friendly
 fn sanitize(str: &str, max_len: Option<usize>) -> String {
     let mut sanitized = String::new();
@@ -236,7 +229,6 @@ fn sanitize(str: &str, max_len: Option<usize>) -> String {
     sanitized
 }
 
-#[tracing::instrument(level = "info", skip(plan))]
 fn get_operator_name(plan: &dyn ExecutionPlan) -> String {
     if let Some(exec) = plan.as_any().downcast_ref::<FilterExec>() {
         format!("Filter: {}", exec.predicate())
@@ -371,7 +363,6 @@ filter_expr={}",
     }
 }
 
-#[tracing::instrument(level = "info", skip(x))]
 fn format_partitioning(x: &Partitioning) -> String {
     match x {
         Partitioning::UnknownPartitioning(n) | Partitioning::RoundRobinBatch(n) => {
@@ -383,13 +374,11 @@ fn format_partitioning(x: &Partitioning) -> String {
     }
 }
 
-#[tracing::instrument(level = "info", skip(exprs))]
 fn format_expr_list(exprs: &[Arc<dyn PhysicalExpr>]) -> String {
     let expr_strings: Vec<String> = exprs.iter().map(|e| format!("{e}")).collect();
     expr_strings.join(", ")
 }
 
-#[tracing::instrument(level = "info", skip(scan))]
 /// Get summary of file scan locations
 fn get_file_scan(scan: &FileScanConfig) -> String {
     if !scan.file_groups.is_empty() {
@@ -633,7 +622,6 @@ filter_expr="]
         Ok(())
     }
 
-    #[tracing::instrument(level = "info", skip())]
     async fn test_graph() -> Result<ExecutionGraph> {
         let mut config = SessionConfig::new()
             .with_target_partitions(48)
@@ -661,7 +649,6 @@ filter_expr="]
 
     // With the improvement of https://github.com/apache/arrow-datafusion/pull/4122,
     // Redundant RepartitionExec can be removed so that the stage number will be reduced
-    #[tracing::instrument(level = "info", skip())]
     async fn test_graph_optimized() -> Result<ExecutionGraph> {
         let mut config = SessionConfig::new()
             .with_target_partitions(48)

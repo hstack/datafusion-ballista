@@ -98,7 +98,6 @@ struct ShuffleWriteMetrics {
 }
 
 impl ShuffleWriteMetrics {
-    #[tracing::instrument(level = "info", skip(partition, metrics))]
     fn new(partition: usize, metrics: &ExecutionPlanMetricsSet) -> Self {
         let write_time = MetricBuilder::new(metrics).subset_time("write_time", partition);
         let repart_time =
@@ -118,7 +117,6 @@ impl ShuffleWriteMetrics {
 }
 
 impl ShuffleWriterExec {
-    #[tracing::instrument(level = "info", skip(job_id, stage_id, plan, work_dir, shuffle_output_partitioning))]
     /// Create a new shuffle writer
     pub fn try_new(
         job_id: String,
@@ -145,7 +143,6 @@ impl ShuffleWriterExec {
         })
     }
 
-    #[tracing::instrument(level = "info", skip(schema, shuffle_output_partitioning, plan))]
     /// This function creates the cache object that stores the plan properties such as schema, equivalence properties, ordering, partitioning, etc.
     fn compute_properties(
         schema: SchemaRef,
@@ -167,31 +164,26 @@ impl ShuffleWriterExec {
     }
 
 
-    #[tracing::instrument(level = "info", skip(self))]
     /// Get the Job ID for this query stage
     pub fn job_id(&self) -> &str {
         &self.job_id
     }
 
-    #[tracing::instrument(level = "info", skip(self))]
     /// Get the Stage ID for this query stage
     pub fn stage_id(&self) -> usize {
         self.stage_id
     }
 
-    #[tracing::instrument(level = "info", skip(self))]
     /// Get the input partition count
     pub fn input_partition_count(&self) -> usize {
         self.plan.properties().output_partitioning().partition_count()
     }
 
-    #[tracing::instrument(level = "info", skip(self))]
     /// Get the true output partitioning
     pub fn shuffle_output_partitioning(&self) -> Option<&Partitioning> {
         self.shuffle_output_partitioning.as_ref()
     }
 
-    #[tracing::instrument(level = "info", skip(self, input_partition, context))]
     pub fn execute_shuffle_write(
         &self,
         input_partition: usize,
@@ -358,7 +350,6 @@ impl ShuffleWriterExec {
 }
 
 impl DisplayAs for ShuffleWriterExec {
-    #[tracing::instrument(level = "info", skip(self, t, f))]
     fn fmt_as(
         &self,
         t: DisplayFormatType,
@@ -377,26 +368,21 @@ impl DisplayAs for ShuffleWriterExec {
 }
 
 impl ExecutionPlan for ShuffleWriterExec {
-    #[tracing::instrument(level = "info", skip(self))]
     fn as_any(&self) -> &dyn Any {
         self
     }
 
-    #[tracing::instrument(level = "info", skip(self))]
     fn schema(&self) -> SchemaRef {
         self.plan.schema()
     }
 
 
-    #[tracing::instrument(level = "info", skip(self))]
     fn properties(&self) -> &PlanProperties { &self.cache }
 
-    #[tracing::instrument(level = "info", skip(self))]
     fn children(&self) -> Vec<Arc<dyn ExecutionPlan>> {
         vec![self.plan.clone()]
     }
 
-    #[tracing::instrument(level = "info", skip(self, children))]
     fn with_new_children(
         self: Arc<Self>,
         children: Vec<Arc<dyn ExecutionPlan>>,
@@ -410,7 +396,6 @@ impl ExecutionPlan for ShuffleWriterExec {
         )?))
     }
 
-    #[tracing::instrument(level = "info", skip(self, partition, context))]
     fn execute(
         &self,
         partition: usize,
@@ -474,18 +459,15 @@ impl ExecutionPlan for ShuffleWriterExec {
         )))
     }
 
-    #[tracing::instrument(level = "info", skip(self))]
     fn metrics(&self) -> Option<MetricsSet> {
         Some(self.metrics.clone_inner())
     }
 
-    #[tracing::instrument(level = "info", skip(self))]
     fn statistics(&self) -> Result<Statistics> {
         self.plan.statistics()
     }
 }
 
-#[tracing::instrument(level = "info", skip())]
 fn result_schema() -> SchemaRef {
     let stats = PartitionStats::default();
     Arc::new(Schema::new(vec![
@@ -603,7 +585,6 @@ mod tests {
         Ok(())
     }
 
-    #[tracing::instrument(level = "info", skip())]
     fn create_input_plan() -> Result<Arc<dyn ExecutionPlan>> {
         let schema = Arc::new(Schema::new(vec![
             Field::new("a", DataType::UInt32, true),

@@ -36,7 +36,6 @@ use protobuf::{action::ActionType, operator_metric, NamedCount, NamedGauge, Name
 impl TryInto<protobuf::Action> for Action {
     type Error = BallistaError;
 
-    #[tracing::instrument(level = "info", skip(self))]
     fn try_into(self) -> Result<protobuf::Action, Self::Error> {
         match self {
             Action::FetchPartition {
@@ -63,7 +62,6 @@ impl TryInto<protobuf::Action> for Action {
 
 #[allow(clippy::from_over_into)]
 impl Into<protobuf::PartitionId> for PartitionId {
-    #[tracing::instrument(level = "info", skip(self))]
     fn into(self) -> protobuf::PartitionId {
         protobuf::PartitionId {
             job_id: self.job_id,
@@ -76,7 +74,6 @@ impl Into<protobuf::PartitionId> for PartitionId {
 impl TryInto<protobuf::PartitionLocation> for PartitionLocation {
     type Error = BallistaError;
 
-    #[tracing::instrument(level = "info", skip(self))]
     fn try_into(self) -> Result<protobuf::PartitionLocation, Self::Error> {
         Ok(protobuf::PartitionLocation {
             map_partition_id: self.map_partition_id as u32,
@@ -90,7 +87,6 @@ impl TryInto<protobuf::PartitionLocation> for PartitionLocation {
 
 #[allow(clippy::from_over_into)]
 impl Into<protobuf::PartitionStats> for PartitionStats {
-    #[tracing::instrument(level = "info", skip(self))]
     fn into(self) -> protobuf::PartitionStats {
         let none_value = -1_i64;
         protobuf::PartitionStats {
@@ -102,7 +98,6 @@ impl Into<protobuf::PartitionStats> for PartitionStats {
     }
 }
 
-#[tracing::instrument(level = "info", skip(output_partitioning))]
 pub fn hash_partitioning_to_proto(
     output_partitioning: Option<&Partitioning>,
 ) -> Result<Option<datafusion_protobuf::PhysicalHashRepartition>, BallistaError> {
@@ -129,7 +124,6 @@ pub fn hash_partitioning_to_proto(
 impl TryInto<protobuf::OperatorMetric> for &MetricValue {
     type Error = BallistaError;
 
-    #[tracing::instrument(level = "info", skip(self))]
     fn try_into(self) -> Result<protobuf::OperatorMetric, Self::Error> {
         match self {
             MetricValue::OutputRows(count) => Ok(protobuf::OperatorMetric {
@@ -193,7 +187,6 @@ impl TryInto<protobuf::OperatorMetric> for &MetricValue {
 impl TryInto<protobuf::OperatorMetricsSet> for MetricsSet {
     type Error = BallistaError;
 
-    #[tracing::instrument(level = "info", skip(self))]
     fn try_into(self) -> Result<protobuf::OperatorMetricsSet, Self::Error> {
         let metrics = self
             .iter()
@@ -205,7 +198,6 @@ impl TryInto<protobuf::OperatorMetricsSet> for MetricsSet {
 
 #[allow(clippy::from_over_into)]
 impl Into<protobuf::ExecutorMetadata> for ExecutorMetadata {
-    #[tracing::instrument(level = "info", skip(self))]
     fn into(self) -> protobuf::ExecutorMetadata {
         protobuf::ExecutorMetadata {
             id: self.id,
@@ -219,7 +211,6 @@ impl Into<protobuf::ExecutorMetadata> for ExecutorMetadata {
 
 #[allow(clippy::from_over_into)]
 impl Into<protobuf::ExecutorSpecification> for ExecutorSpecification {
-    #[tracing::instrument(level = "info", skip(self))]
     fn into(self) -> protobuf::ExecutorSpecification {
         protobuf::ExecutorSpecification {
             resources: vec![protobuf::executor_resource::Resource::TaskSlots(
@@ -239,7 +230,6 @@ struct ExecutorResourcePair {
 
 #[allow(clippy::from_over_into)]
 impl Into<protobuf::ExecutorData> for ExecutorData {
-    #[tracing::instrument(level = "info", skip(self))]
     fn into(self) -> protobuf::ExecutorData {
         protobuf::ExecutorData {
             executor_id: self.executor_id,

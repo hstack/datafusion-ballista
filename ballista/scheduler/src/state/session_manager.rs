@@ -29,12 +29,10 @@ pub struct SessionManager {
 }
 
 impl SessionManager {
-    #[tracing::instrument(level = "info", skip(state))]
     pub fn new(state: Arc<dyn JobState>) -> Self {
         Self { state }
     }
 
-    #[tracing::instrument(level = "info", skip(self, session_id))]
     pub async fn remove_session(
         &self,
         session_id: &str,
@@ -42,7 +40,6 @@ impl SessionManager {
         self.state.remove_session(session_id).await
     }
 
-    #[tracing::instrument(level = "info", skip(self, session_id, config))]
     pub async fn update_session(
         &self,
         session_id: &str,
@@ -51,7 +48,6 @@ impl SessionManager {
         self.state.update_session(session_id, config).await
     }
 
-    #[tracing::instrument(level = "info", skip(self, config))]
     pub async fn create_session(
         &self,
         config: &BallistaConfig,
@@ -59,13 +55,11 @@ impl SessionManager {
         self.state.create_session(config).await
     }
 
-    #[tracing::instrument(level = "info", skip(self, session_id))]
     pub async fn get_session(&self, session_id: &str) -> Result<Arc<SessionContext>> {
         self.state.get_session(session_id).await
     }
 }
 
-#[tracing::instrument(level = "info", skip(ballista_config, session_builder))]
 /// Create a DataFusion session context that is compatible with Ballista Configuration
 pub fn create_datafusion_context(
     ballista_config: &BallistaConfig,

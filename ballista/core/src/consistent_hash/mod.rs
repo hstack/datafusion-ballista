@@ -36,7 +36,6 @@ impl<N> ConsistentHash<N>
 where
     N: Node,
 {
-    #[tracing::instrument(level = "info", skip(node_replicas))]
     pub fn new(node_replicas: Vec<(N, usize)>) -> Self {
         let consistent_hash = Self {
             virtual_nodes: BTreeMap::new(),
@@ -46,7 +45,6 @@ where
         consistent_hash.init(node_replicas)
     }
 
-    #[tracing::instrument(level = "info", skip(node_replicas, hash_func))]
     pub fn new_with_hash(
         node_replicas: Vec<(N, usize)>,
         hash_func: HashFunction,
@@ -59,7 +57,6 @@ where
         consistent_hash.init(node_replicas)
     }
 
-    #[tracing::instrument(level = "info", skip(self, node_replicas))]
     fn init(mut self, node_replicas: Vec<(N, usize)>) -> Self {
         node_replicas.into_iter().for_each(|(node, num_replicas)| {
             self.add(node, num_replicas);
@@ -67,7 +64,6 @@ where
         self
     }
 
-    #[tracing::instrument(level = "info", skip(self))]
     pub fn nodes(&self) -> Vec<&N> {
         self.node_replicas
             .values()
@@ -75,7 +71,6 @@ where
             .collect::<Vec<_>>()
     }
 
-    #[tracing::instrument(level = "info", skip(self))]
     pub fn nodes_mut(&mut self) -> Vec<&mut N> {
         self.node_replicas
             .values_mut()
@@ -83,7 +78,6 @@ where
             .collect::<Vec<_>>()
     }
 
-    #[tracing::instrument(level = "info", skip(self, node, num_replicas))]
     pub fn add(&mut self, node: N, num_replicas: usize) {
         // Remove existing ones
         self.remove(node.name());
@@ -98,7 +92,6 @@ where
             .insert(node.name().to_string(), (node, num_replicas));
     }
 
-    #[tracing::instrument(level = "info", skip(self, node_name))]
     pub fn remove(&mut self, node_name: &str) -> Option<(N, usize)> {
         if let Some((node, num_replicas)) = self.node_replicas.remove(node_name) {
             for i in 0..num_replicas {
@@ -112,12 +105,10 @@ where
         }
     }
 
-    #[tracing::instrument(level = "info", skip(self, key))]
     pub fn get(&self, key: &[u8]) -> Option<&N> {
         self.get_with_tolerance(key, 0)
     }
 
-    #[tracing::instrument(level = "info", skip(self, key, tolerance))]
     pub fn get_with_tolerance(&self, key: &[u8], tolerance: usize) -> Option<&N> {
         self.get_position_key(key, tolerance)
             .and_then(move |position_key| {
@@ -127,12 +118,10 @@ where
             })
     }
 
-    #[tracing::instrument(level = "info", skip(self, key))]
     pub fn get_mut(&mut self, key: &[u8]) -> Option<&mut N> {
         self.get_mut_with_tolerance(key, 0)
     }
 
-    #[tracing::instrument(level = "info", skip(self, key, tolerance))]
     pub fn get_mut_with_tolerance(
         &mut self,
         key: &[u8],
@@ -148,7 +137,6 @@ where
             })
     }
 
-    #[tracing::instrument(level = "info", skip(self, key, tolerance))]
     fn get_position_key(&self, key: &[u8], tolerance: usize) -> Option<Vec<u8>> {
         if self.node_replicas.is_empty() {
             return None;
@@ -181,7 +169,6 @@ where
     }
 }
 
-#[tracing::instrument(level = "info", skip(data))]
 pub fn md5_hash(data: &[u8]) -> Vec<u8> {
     let mut digest = Md5::default();
     digest.update(data);
@@ -277,12 +264,10 @@ mod test {
     }
 
     impl ServerNode {
-        #[tracing::instrument(level = "info", skip(host, port))]
         fn new(host: &str, port: u16) -> Self {
             Self::new_with_available(host, port, true)
         }
 
-        #[tracing::instrument(level = "info", skip(host, port, available))]
         fn new_with_available(host: &str, port: u16, available: bool) -> Self {
             Self {
                 name: format!("{host}:{port}"),
@@ -292,18 +277,15 @@ mod test {
     }
 
     impl Node for ServerNode {
-        #[tracing::instrument(level = "info", skip(self))]
         fn name(&self) -> &str {
             &self.name
         }
 
-        #[tracing::instrument(level = "info", skip(self))]
         fn is_valid(&self) -> bool {
             self.available
         }
     }
 
-    #[tracing::instrument(level = "info", skip())]
     fn prepare_consistent_hash() -> (
         ConsistentHash<ServerNode>,
         Vec<ServerNode>,

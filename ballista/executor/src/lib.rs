@@ -48,7 +48,6 @@ pub struct TaskExecutionTimes {
     end_exec_time: u64,
 }
 
-#[tracing::instrument(level = "info", skip(execution_result, executor_id, task_id, stage_attempt_num, partition_id, operator_metrics, execution_times))]
 pub fn as_task_status(
     execution_result: ballista_core::error::Result<Vec<ShuffleWritePartition>>,
     executor_id: String,

@@ -48,7 +48,6 @@ pub enum PluginEnum {
 }
 
 impl PluginEnum {
-    #[tracing::instrument(level = "info", skip(self))]
     /// new a struct which impl the PluginRegistrar trait
     pub fn init_plugin_manager(&self) -> Box<dyn PluginRegistrar> {
         match self {
@@ -107,7 +106,6 @@ macro_rules! declare_plugin {
     };
 }
 
-#[tracing::instrument(level = "info", skip())]
 /// get the plugin dir
 pub fn plugin_dir() -> String {
     let current_exe_dir = match env::current_exe() {

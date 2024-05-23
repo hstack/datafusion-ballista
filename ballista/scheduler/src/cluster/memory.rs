@@ -58,7 +58,6 @@ pub struct InMemoryClusterState {
 }
 
 impl InMemoryClusterState {
-    #[tracing::instrument(level = "info", skip(self, guard, executors))]
     /// Get the topology nodes of the cluster for consistent hashing
     fn get_topology_nodes(
         &self,
@@ -98,7 +97,6 @@ impl InMemoryClusterState {
 
 #[async_trait]
 impl ClusterState for InMemoryClusterState {
-    #[tracing::instrument(level = "info", skip(self, distribution, active_jobs, executors))]
     async fn bind_schedulable_tasks(
         &self,
         distribution: TaskDistributionPolicy,
@@ -176,7 +174,6 @@ impl ClusterState for InMemoryClusterState {
         Ok(bound_tasks)
     }
 
-    #[tracing::instrument(level = "info", skip(self, executor_slots))]
     async fn unbind_tasks(&self, executor_slots: Vec<ExecutorSlot>) -> Result<()> {
         let mut increments = HashMap::new();
         for (executor_id, num_slots) in executor_slots {
@@ -195,7 +192,6 @@ impl ClusterState for InMemoryClusterState {
         Ok(())
     }
 
-    #[tracing::instrument(level = "info", skip(self, metadata, spec))]
     async fn register_executor(
         &self,
         metadata: ExecutorMetadata,
@@ -227,13 +223,11 @@ impl ClusterState for InMemoryClusterState {
         Ok(())
     }
 
-    #[tracing::instrument(level = "info", skip(self, metadata))]
     async fn save_executor_metadata(&self, metadata: ExecutorMetadata) -> Result<()> {
         self.executors.insert(metadata.id.clone(), metadata);
         Ok(())
     }
 
-    #[tracing::instrument(level = "info", skip(self, executor_id))]
     async fn get_executor_metadata(&self, executor_id: &str) -> Result<ExecutorMetadata> {
         self.executors
             .get(executor_id)
@@ -245,7 +239,6 @@ impl ClusterState for InMemoryClusterState {
             })
     }
 
-    #[tracing::instrument(level = "info", skip(self, heartbeat))]
     async fn save_executor_heartbeat(&self, heartbeat: ExecutorHeartbeat) -> Result<()> {
         let executor_id = heartbeat.executor_id.clone();
         if let Some(mut last) = self.heartbeats.get_mut(&executor_id) {
@@ -257,7 +250,6 @@ impl ClusterState for InMemoryClusterState {
         Ok(())
     }
 
-    #[tracing::instrument(level = "info", skip(self, executor_id))]
     async fn remove_executor(&self, executor_id: &str) -> Result<()> {
         {
             let mut guard = self.task_slots.lock().await;
@@ -270,7 +262,6 @@ impl ClusterState for InMemoryClusterState {
         Ok(())
     }
 
-    #[tracing::instrument(level = "info", skip(self))]
     fn executor_heartbeats(&self) -> HashMap<String, ExecutorHeartbeat> {
         self.heartbeats
             .iter()
@@ -278,7 +269,6 @@ impl ClusterState for InMemoryClusterState {
             .collect()
     }
 
-    #[tracing::instrument(level = "info", skip(self, executor_id))]
     fn get_executor_heartbeat(&self, executor_id: &str) -> Option<ExecutorHeartbeat> {
         self.heartbeats.get(executor_id).map(|r| r.value().clone())
     }
@@ -303,7 +293,6 @@ pub struct InMemoryJobState {
 }
 
 impl InMemoryJobState {
-    #[tracing::instrument(level = "info", skip(scheduler, session_builder))]
     pub fn new(scheduler: impl Into<String>, session_builder: SessionBuilder) -> Self {
         Self {
             scheduler: scheduler.into(),
@@ -319,7 +308,6 @@ impl InMemoryJobState {
 
 #[async_trait]
 impl JobState for InMemoryJobState {
-    #[tracing::instrument(level = "info", skip(self, job_id, graph))]
     async fn submit_job(&self, job_id: String, graph: &ExecutionGraph) -> Result<()> {
         if self.queued_jobs.get(&job_id).is_some() {
             self.running_jobs
@@ -339,7 +327,6 @@ impl JobState for InMemoryJobState {
         }
     }
 
-    #[tracing::instrument(level = "info", skip(self, job_id))]
     async fn get_job_status(&self, job_id: &str) -> Result<Option<JobStatus>> {
         if let Some((job_name, queued_at)) = self.queued_jobs.get(job_id).as_deref() {
             return Ok(Some(JobStatus {
@@ -362,7 +349,6 @@ impl JobState for InMemoryJobState {
         Ok(None)
     }
 
-    #[tracing::instrument(level = "info", skip(self, job_id))]
     async fn get_execution_graph(&self, job_id: &str) -> Result<Option<ExecutionGraph>> {
         Ok(self
             .completed_jobs
@@ -371,14 +357,12 @@ impl JobState for InMemoryJobState {
             .and_then(|(_, graph)| graph.clone()))
     }
 
-    #[tracing::instrument(level = "info", skip(self, _job_id))]
     async fn try_acquire_job(&self, _job_id: &str) -> Result<Option<ExecutionGraph>> {
         // Always return None. The only state stored here are for completed jobs
         // which cannot be acquired
         Ok(None)
     }
 
-    #[tracing::instrument(level = "info", skip(self, job_id, graph))]
     async fn save_job(&self, job_id: &str, graph: &ExecutionGraph) -> Result<()> {
         let status = graph.status().clone();
 
@@ -404,7 +388,6 @@ impl JobState for InMemoryJobState {
         Ok(())
     }
 
-    #[tracing::instrument(level = "info", skip(self, session_id))]
     async fn get_session(&self, session_id: &str) -> Result<Arc<SessionContext>> {
         self.sessions
             .get(session_id)
@@ -414,7 +397,6 @@ impl JobState for InMemoryJobState {
             })
     }
 
-    #[tracing::instrument(level = "info", skip(self, config))]
     async fn create_session(
         &self,
         config: &BallistaConfig,
@@ -425,7 +407,6 @@ impl JobState for InMemoryJobState {
         Ok(session)
     }
 
-    #[tracing::instrument(level = "info", skip(self, session_id, config))]
     async fn update_session(
         &self,
         session_id: &str,
@@ -438,7 +419,6 @@ impl JobState for InMemoryJobState {
         Ok(session)
     }
 
-    #[tracing::instrument(level = "info", skip(self, session_id))]
     async fn remove_session(
         &self,
         session_id: &str,
@@ -446,12 +426,10 @@ impl JobState for InMemoryJobState {
         Ok(self.sessions.remove(session_id).map(|(_key, value)| value))
     }
 
-    #[tracing::instrument(level = "info", skip(self))]
     async fn job_state_events(&self) -> Result<JobStateEventStream> {
         Ok(Box::pin(self.job_event_sender.subscribe()))
     }
 
-    #[tracing::instrument(level = "info", skip(self, job_id))]
     async fn remove_job(&self, job_id: &str) -> Result<()> {
         if self.completed_jobs.remove(job_id).is_none() {
             warn!("Tried to delete non-existent job {job_id} from state");
@@ -459,7 +437,6 @@ impl JobState for InMemoryJobState {
         Ok(())
     }
 
-    #[tracing::instrument(level = "info", skip(self))]
     async fn get_jobs(&self) -> Result<HashSet<String>> {
         Ok(self
             .completed_jobs
@@ -468,7 +445,6 @@ impl JobState for InMemoryJobState {
             .collect())
     }
 
-    #[tracing::instrument(level = "info", skip(self, job_id, job_name, queued_at))]
     fn accept_job(&self, job_id: &str, job_name: &str, queued_at: u64) -> Result<()> {
         self.queued_jobs
             .insert(job_id.to_string(), (job_name.to_string(), queued_at));
@@ -476,12 +452,10 @@ impl JobState for InMemoryJobState {
         Ok(())
     }
 
-    #[tracing::instrument(level = "info", skip(self))]
     fn pending_job_number(&self) -> usize {
         self.queued_jobs.len()
     }
 
-    #[tracing::instrument(level = "info", skip(self, job_id, reason))]
     async fn fail_unscheduled_job(&self, job_id: &str, reason: String) -> Result<()> {
         if let Some((job_id, (job_name, queued_at))) = self.queued_jobs.remove(job_id) {
             self.completed_jobs.insert(

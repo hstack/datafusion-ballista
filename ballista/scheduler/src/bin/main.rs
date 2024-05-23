@@ -49,7 +49,6 @@ mod config {
     ));
 }
 
-#[tracing::instrument(level = "info", skip())]
 #[tokio::main]
 async fn main() -> Result<()> {
     // parse options

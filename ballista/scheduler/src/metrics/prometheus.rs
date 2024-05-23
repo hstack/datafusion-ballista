@@ -49,7 +49,6 @@ pub struct PrometheusMetricsCollector {
 }
 
 impl PrometheusMetricsCollector {
-    #[tracing::instrument(level = "info", skip(registry))]
     pub fn new(registry: &Registry) -> Result<Self> {
         let execution_time = register_histogram_with_registry!(
             "job_exec_time_seconds",
@@ -127,7 +126,6 @@ impl PrometheusMetricsCollector {
         })
     }
 
-    #[tracing::instrument(level = "info", skip())]
     pub fn current() -> Result<Arc<dyn SchedulerMetricsCollector>> {
         COLLECTOR
             .get_or_try_init(|| {
@@ -140,36 +138,30 @@ impl PrometheusMetricsCollector {
 }
 
 impl SchedulerMetricsCollector for PrometheusMetricsCollector {
-    #[tracing::instrument(level = "info", skip(self, _job_id, queued_at, submitted_at))]
     fn record_submitted(&self, _job_id: &str, queued_at: u64, submitted_at: u64) {
         self.submitted.inc();
         self.planning_time
             .observe((submitted_at - queued_at) as f64);
     }
 
-    #[tracing::instrument(level = "info", skip(self, _job_id, queued_at, completed_at))]
     fn record_completed(&self, _job_id: &str, queued_at: u64, completed_at: u64) {
         self.completed.inc();
         self.execution_time
             .observe((completed_at - queued_at) as f64 / 1000_f64)
     }
 
-    #[tracing::instrument(level = "info", skip(self, _job_id, _queued_at, _failed_at))]
     fn record_failed(&self, _job_id: &str, _queued_at: u64, _failed_at: u64) {
         self.failed.inc()
     }
 
-    #[tracing::instrument(level = "info", skip(self, _job_id))]
     fn record_cancelled(&self, _job_id: &str) {
         self.cancelled.inc();
     }
 
-    #[tracing::instrument(level = "info", skip(self, value))]
     fn set_pending_tasks_queue_size(&self, value: u64) {
         self.pending_queue_size.set(value as f64);
     }
 
-    #[tracing::instrument(level = "info", skip(self))]
     fn gather_metrics(&self) -> Result<Option<(Vec<u8>, String)>> {
         let encoder = TextEncoder::new();
 

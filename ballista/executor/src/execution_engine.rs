@@ -56,7 +56,6 @@ pub trait QueryStageExecutor: Sync + Send + Debug {
 pub struct DefaultExecutionEngine {}
 
 impl ExecutionEngine for DefaultExecutionEngine {
-    #[tracing::instrument(level = "info", skip(self, job_id, stage_id, plan, work_dir))]
     fn create_query_stage_exec(
         &self,
         job_id: String,
@@ -92,7 +91,6 @@ pub struct DefaultQueryStageExec {
 }
 
 impl DefaultQueryStageExec {
-    #[tracing::instrument(level = "info", skip(shuffle_writer))]
     pub fn new(shuffle_writer: ShuffleWriterExec) -> Self {
         Self { shuffle_writer }
     }
@@ -100,7 +98,6 @@ impl DefaultQueryStageExec {
 
 #[async_trait]
 impl QueryStageExecutor for DefaultQueryStageExec {
-    #[tracing::instrument(level = "info", skip(self, input_partition, context))]
     async fn execute_query_stage(
         &self,
         input_partition: usize,
@@ -111,7 +108,6 @@ impl QueryStageExecutor for DefaultQueryStageExec {
             .await
     }
 
-    #[tracing::instrument(level = "info", skip(self))]
     fn collect_plan_metrics(&self) -> Vec<MetricsSet> {
         utils::collect_plan_metrics(&self.shuffle_writer)
     }

@@ -30,7 +30,6 @@ pub struct LocalMemoryMedium {
 }
 
 impl LocalMemoryMedium {
-    #[tracing::instrument(level = "info", skip())]
     pub fn new() -> Self {
         Self {
             cache_object_store: Arc::new(InMemory::new()),
@@ -39,31 +38,26 @@ impl LocalMemoryMedium {
 }
 
 impl Default for LocalMemoryMedium {
-    #[tracing::instrument(level = "info", skip())]
     fn default() -> Self {
         Self::new()
     }
 }
 
 impl Display for LocalMemoryMedium {
-    #[tracing::instrument(level = "info", skip(self, f))]
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         write!(f, "Cache medium with local memory")
     }
 }
 
 impl CacheMedium for LocalMemoryMedium {
-    #[tracing::instrument(level = "info", skip(self))]
     fn as_any(&self) -> &dyn Any {
         self
     }
 
-    #[tracing::instrument(level = "info", skip(self))]
     fn get_object_store(&self) -> Arc<dyn ObjectStore> {
         self.cache_object_store.clone()
     }
 
-    #[tracing::instrument(level = "info", skip(self, source_location, source_object_store))]
     fn get_mapping_location(
         &self,
         source_location: &Path,

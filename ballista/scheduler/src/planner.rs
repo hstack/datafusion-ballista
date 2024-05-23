@@ -42,21 +42,18 @@ pub struct DistributedPlanner {
 }
 
 impl DistributedPlanner {
-    #[tracing::instrument(level = "info", skip())]
     pub fn new() -> Self {
         Self { next_stage_id: 0 }
     }
 }
 
 impl Default for DistributedPlanner {
-    #[tracing::instrument(level = "info", skip())]
     fn default() -> Self {
         Self::new()
     }
 }
 
 impl DistributedPlanner {
-    #[tracing::instrument(level = "info", skip(self, job_id, execution_plan))]
     /// Returns a vector of ExecutionPlans, where the root node is a [ShuffleWriterExec].
     /// Plans that depend on the input of other plans will have leaf nodes of type [UnresolvedShuffleExec].
     /// A [ShuffleWriterExec] is created whenever the partitioning changes.
@@ -77,7 +74,6 @@ impl DistributedPlanner {
         Ok(stages)
     }
 
-    #[tracing::instrument(level = "info", skip(self, job_id, execution_plan))]
     /// Returns a potentially modified version of the input execution_plan along with the resulting query stages.
     /// This function is needed because the input execution_plan might need to be modified, but it might not hold a
     /// complete query stage (its parent might also belong to the same stage)
@@ -168,7 +164,6 @@ impl DistributedPlanner {
         }
     }
 
-    #[tracing::instrument(level = "info", skip(self))]
     /// Generate a new stage ID
     fn next_stage_id(&mut self) -> usize {
         self.next_stage_id += 1;
@@ -176,7 +171,6 @@ impl DistributedPlanner {
     }
 }
 
-#[tracing::instrument(level = "info", skip(shuffle_writer))]
 fn create_unresolved_shuffle(
     shuffle_writer: &ShuffleWriterExec,
 ) -> Arc<UnresolvedShuffleExec> {
@@ -187,7 +181,6 @@ fn create_unresolved_shuffle(
     ))
 }
 
-#[tracing::instrument(level = "info", skip(plan))]
 /// Returns the unresolved shuffles in the execution plan
 pub fn find_unresolved_shuffles(
     plan: &Arc<dyn ExecutionPlan>,
@@ -208,7 +201,6 @@ pub fn find_unresolved_shuffles(
     }
 }
 
-#[tracing::instrument(level = "info", skip(stage, partition_locations))]
 pub fn remove_unresolved_shuffles(
     stage: Arc<dyn ExecutionPlan>,
     partition_locations: &HashMap<usize, HashMap<usize, Vec<PartitionLocation>>>,
@@ -261,7 +253,6 @@ pub fn remove_unresolved_shuffles(
     Ok(with_new_children_if_necessary(stage, new_children)?.into())
 }
 
-#[tracing::instrument(level = "info", skip(stage))]
 /// Rollback the ShuffleReaderExec to UnresolvedShuffleExec.
 /// Used when the input stages are finished but some partitions are missing due to executor lost.
 /// The entire stage need to be rolled back and rescheduled.
@@ -288,7 +279,6 @@ pub fn rollback_resolved_shuffles(
     Ok(with_new_children_if_necessary(stage, new_children)?.into())
 }
 
-#[tracing::instrument(level = "info", skip(job_id, stage_id, plan, partitioning))]
 fn create_shuffle_writer(
     job_id: &str,
     stage_id: usize,
@@ -628,7 +618,6 @@ order by
         Ok(())
     }
 
-    #[tracing::instrument(level = "info", skip(ctx, plan))]
     fn roundtrip_operator(
         ctx: &SessionContext,
         plan: Arc<dyn ExecutionPlan>,

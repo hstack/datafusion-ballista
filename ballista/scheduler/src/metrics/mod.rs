@@ -63,31 +63,23 @@ pub trait SchedulerMetricsCollector: Send + Sync {
 pub struct NoopMetricsCollector {}
 
 impl SchedulerMetricsCollector for NoopMetricsCollector {
-    #[tracing::instrument(level = "info", skip(self, _job_id, _queued_at, _submitted_at))]
     fn record_submitted(&self, _job_id: &str, _queued_at: u64, _submitted_at: u64) {}
-    #[tracing::instrument(level = "info", skip(self, _job_id, _queued_at, _completed_att))]
     fn record_completed(&self, _job_id: &str, _queued_at: u64, _completed_att: u64) {}
-    #[tracing::instrument(level = "info", skip(self, _job_id, _queued_at, _failed_at))]
     fn record_failed(&self, _job_id: &str, _queued_at: u64, _failed_at: u64) {}
-    #[tracing::instrument(level = "info", skip(self, _job_id))]
     fn record_cancelled(&self, _job_id: &str) {}
-    #[tracing::instrument(level = "info", skip(self, _value))]
     fn set_pending_tasks_queue_size(&self, _value: u64) {}
 
-    #[tracing::instrument(level = "info", skip(self))]
     fn gather_metrics(&self) -> Result<Option<(Vec<u8>, String)>> {
         Ok(None)
     }
 }
 
-#[tracing::instrument(level = "info", skip())]
 /// Return a reference to the systems default metrics collector.
 #[cfg(feature = "prometheus")]
 pub fn default_metrics_collector() -> Result<Arc<dyn SchedulerMetricsCollector>> {
     PrometheusMetricsCollector::current()
 }
 
-#[tracing::instrument(level = "info", skip())]
 #[cfg(not(feature = "prometheus"))]
 pub fn default_metrics_collector() -> Result<Arc<dyn SchedulerMetricsCollector>> {
     Ok(Arc::new(NoopMetricsCollector::default()))

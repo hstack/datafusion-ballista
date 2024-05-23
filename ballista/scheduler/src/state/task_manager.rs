@@ -73,7 +73,6 @@ struct DefaultTaskLauncher {
 }
 
 impl DefaultTaskLauncher {
-    #[tracing::instrument(level = "info", skip(scheduler_id))]
     pub fn new(scheduler_id: String) -> Self {
         Self { scheduler_id }
     }
@@ -81,7 +80,6 @@ impl DefaultTaskLauncher {
 
 #[async_trait::async_trait]
 impl TaskLauncher for DefaultTaskLauncher {
-    #[tracing::instrument(level = "info", skip(self, executor, tasks, executor_manager))]
     async fn launch_tasks(
         &self,
         executor: &ExecutorMetadata,
@@ -133,7 +131,6 @@ pub struct JobInfoCache {
 }
 
 impl JobInfoCache {
-    #[tracing::instrument(level = "info", skip(graph))]
     pub fn new(graph: ExecutionGraph) -> Self {
         let status = graph.status().status.clone();
         Self {
@@ -154,7 +151,6 @@ pub struct UpdatedStages {
 }
 
 impl<T: 'static + AsLogicalPlan, U: 'static + AsExecutionPlan> TaskManager<T, U> {
-    #[tracing::instrument(level = "info", skip(state, codec, scheduler_id))]
     pub fn new(
         state: Arc<dyn JobState>,
         codec: BallistaCodec<T, U>,
@@ -169,7 +165,6 @@ impl<T: 'static + AsLogicalPlan, U: 'static + AsExecutionPlan> TaskManager<T, U>
         }
     }
 
-    #[tracing::instrument(level = "info", skip(state, codec, scheduler_id, launcher))]
     #[allow(dead_code)]
     pub(crate) fn with_launcher(
         state: Arc<dyn JobState>,
@@ -186,26 +181,22 @@ impl<T: 'static + AsLogicalPlan, U: 'static + AsExecutionPlan> TaskManager<T, U>
         }
     }
 
-    #[tracing::instrument(level = "info", skip(self, job_id, job_name, queued_at))]
     /// Enqueue a job for scheduling
     pub fn queue_job(&self, job_id: &str, job_name: &str, queued_at: u64) -> Result<()> {
         self.state.accept_job(job_id, job_name, queued_at)
     }
 
-    #[tracing::instrument(level = "info", skip(self))]
     /// Get the number of queued jobs. If it's big, then it means the scheduler is too busy.
     /// In normal case, it's better to be 0.
     pub fn pending_job_number(&self) -> usize {
         self.state.pending_job_number()
     }
 
-    #[tracing::instrument(level = "info", skip(self))]
     /// Get the number of running jobs.
     pub fn running_job_number(&self) -> usize {
         self.active_job_cache.len()
     }
 
-    #[tracing::instrument(level = "info", skip(self, job_id, job_name, session_id, plan, queued_at))]
     /// Generate an ExecutionGraph for the job and save it to the persistent state.
     /// By default, this job will be curated by the scheduler which receives it.
     /// Then we will also save it to the active execution graph
@@ -236,7 +227,6 @@ impl<T: 'static + AsLogicalPlan, U: 'static + AsExecutionPlan> TaskManager<T, U>
         Ok(())
     }
 
-    #[tracing::instrument(level = "info", skip(self))]
     pub fn get_running_job_cache(&self) -> Arc<HashMap<String, JobInfoCache>> {
         let ret = self
             .active_job_cache
@@ -253,7 +243,6 @@ impl<T: 'static + AsLogicalPlan, U: 'static + AsExecutionPlan> TaskManager<T, U>
         Arc::new(ret)
     }
 
-    #[tracing::instrument(level = "info", skip(self))]
     /// Get a list of active job ids
     pub async fn get_jobs(&self) -> Result<Vec<JobOverview>> {
         let job_ids = self.state.get_jobs().await?;
@@ -274,7 +263,6 @@ impl<T: 'static + AsLogicalPlan, U: 'static + AsExecutionPlan> TaskManager<T, U>
         Ok(jobs)
     }
 
-    #[tracing::instrument(level = "info", skip(self, job_id))]
     /// Get the status of of a job. First look in the active cache.
     /// If no one found, then in the Active/Completed jobs, and then in Failed jobs
     pub async fn get_job_status(&self, job_id: &str) -> Result<Option<JobStatus>> {
@@ -287,7 +275,6 @@ impl<T: 'static + AsLogicalPlan, U: 'static + AsExecutionPlan> TaskManager<T, U>
         }
     }
 
-    #[tracing::instrument(level = "info", skip(self, job_id))]
     /// Get the execution graph of of a job. First look in the active cache.
     /// If no one found, then in the Active/Completed jobs.
     pub(crate) async fn get_job_execution_graph(
@@ -305,7 +292,6 @@ impl<T: 'static + AsLogicalPlan, U: 'static + AsExecutionPlan> TaskManager<T, U>
         }
     }
 
-    #[tracing::instrument(level = "info", skip(self, executor, task_status))]
     /// Update given task statuses in the respective job and return a tuple containing:
     /// 1. A list of QueryStageSchedulerEvent to publish.
     /// 2. A list of reservations that can now be offered.
@@ -352,7 +338,6 @@ impl<T: 'static + AsLogicalPlan, U: 'static + AsExecutionPlan> TaskManager<T, U>
         Ok(events)
     }
 
-    #[tracing::instrument(level = "info", skip(self, job_id))]
     /// Mark a job to success. This will create a key under the CompletedJobs keyspace
     /// and remove the job from ActiveJobs
     pub(crate) async fn succeed_job(&self, job_id: &str) -> Result<()> {
@@ -373,7 +358,6 @@ impl<T: 'static + AsLogicalPlan, U: 'static + AsExecutionPlan> TaskManager<T, U>
         Ok(())
     }
 
-    #[tracing::instrument(level = "info", skip(self, job_id))]
     /// Cancel the job and return a Vec of running tasks need to cancel
     pub(crate) async fn cancel_job(
         &self,
@@ -382,7 +366,6 @@ impl<T: 'static + AsLogicalPlan, U: 'static + AsExecutionPlan> TaskManager<T, U>
         self.abort_job(job_id, "Cancelled".to_owned()).await
     }
 
-    #[tracing::instrument(level = "info", skip(self, job_id, failure_reason))]
     /// Abort the job and return a Vec of running tasks need to cancel
     pub(crate) async fn abort_job(
         &self,
@@ -417,7 +400,6 @@ impl<T: 'static + AsLogicalPlan, U: 'static + AsExecutionPlan> TaskManager<T, U>
         Ok((tasks_to_cancel, pending_tasks))
     }
 
-    #[tracing::instrument(level = "info", skip(self, job_id, failure_reason))]
     /// Mark a unscheduled job as failed. This will create a key under the FailedJobs keyspace
     /// and remove the job from ActiveJobs or QueuedJobs
     pub async fn fail_unscheduled_job(
@@ -430,7 +412,6 @@ impl<T: 'static + AsLogicalPlan, U: 'static + AsExecutionPlan> TaskManager<T, U>
             .await
     }
 
-    #[tracing::instrument(level = "info", skip(self, job_id))]
     pub async fn update_job(&self, job_id: &str) -> Result<usize> {
         debug!("Update active job {job_id}");
         if let Some(graph) = self.get_active_execution_graph(job_id) {
@@ -454,7 +435,6 @@ impl<T: 'static + AsLogicalPlan, U: 'static + AsExecutionPlan> TaskManager<T, U>
         }
     }
 
-    #[tracing::instrument(level = "info", skip(self, executor_id))]
     /// return a Vec of running tasks need to cancel
     pub async fn executor_lost(&self, executor_id: &str) -> Result<Vec<RunningTaskInfo>> {
         // Collect all the running task need to cancel when there are running stages rolled back.
@@ -476,7 +456,6 @@ impl<T: 'static + AsLogicalPlan, U: 'static + AsExecutionPlan> TaskManager<T, U>
         Ok(running_tasks_to_cancel)
     }
 
-    #[tracing::instrument(level = "info", skip(self, job_id))]
     /// Retrieve the number of available tasks for the given job. The value returned
     /// is strictly a point-in-time snapshot
     pub async fn get_available_task_count(&self, job_id: &str) -> Result<usize> {
@@ -489,7 +468,6 @@ impl<T: 'static + AsLogicalPlan, U: 'static + AsExecutionPlan> TaskManager<T, U>
         }
     }
 
-    #[tracing::instrument(level = "info", skip(self, task))]
     #[allow(dead_code)]
     pub fn prepare_task_definition(
         &self,
@@ -549,7 +527,6 @@ impl<T: 'static + AsLogicalPlan, U: 'static + AsExecutionPlan> TaskManager<T, U>
         }
     }
 
-    #[tracing::instrument(level = "info", skip(self, executor, tasks, executor_manager))]
     /// Launch the given tasks on the specified executor
     pub(crate) async fn launch_multi_task(
         &self,
@@ -574,7 +551,6 @@ impl<T: 'static + AsLogicalPlan, U: 'static + AsExecutionPlan> TaskManager<T, U>
         }
     }
 
-    #[tracing::instrument(level = "info", skip(self, tasks))]
     #[allow(dead_code)]
     /// Prepare a MultiTaskDefinition with multiple tasks belonging to the same job stage
     fn prepare_multi_task_definition(
@@ -679,7 +655,6 @@ impl<T: 'static + AsLogicalPlan, U: 'static + AsExecutionPlan> TaskManager<T, U>
         }
     }
 
-    #[tracing::instrument(level = "info", skip(self, job_id))]
     /// Get the `ExecutionGraph` for the given job ID from cache
     pub(crate) fn get_active_execution_graph(
         &self,
@@ -691,7 +666,6 @@ impl<T: 'static + AsLogicalPlan, U: 'static + AsExecutionPlan> TaskManager<T, U>
             .map(|cached| cached.execution_graph.clone())
     }
 
-    #[tracing::instrument(level = "info", skip(self, job_id))]
     /// Remove the `ExecutionGraph` for the given job ID from cache
     pub(crate) fn remove_active_execution_graph(
         &self,
@@ -702,7 +676,6 @@ impl<T: 'static + AsLogicalPlan, U: 'static + AsExecutionPlan> TaskManager<T, U>
             .map(|value| value.1.execution_graph)
     }
 
-    #[tracing::instrument(level = "info", skip(self))]
     /// Generate a new random Job ID
     pub fn generate_job_id(&self) -> String {
         let mut rng = thread_rng();
@@ -713,7 +686,6 @@ impl<T: 'static + AsLogicalPlan, U: 'static + AsExecutionPlan> TaskManager<T, U>
             .collect()
     }
 
-    #[tracing::instrument(level = "info", skip(self, job_id, clean_up_interval))]
     /// Clean up a failed job in FailedJobs Keyspace by delayed clean_up_interval seconds
     pub(crate) fn clean_up_job_delayed(&self, job_id: String, clean_up_interval: u64) {
         if clean_up_interval == 0 {
@@ -742,7 +714,6 @@ pub struct JobOverview {
 }
 
 impl From<&ExecutionGraph> for JobOverview {
-    #[tracing::instrument(level = "info", skip(value))]
     fn from(value: &ExecutionGraph) -> Self {
         let mut completed_stages = 0;
         for stage in value.stages().values() {
