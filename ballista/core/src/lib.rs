@@ -34,6 +34,7 @@ pub mod object_store_registry;
 /// some plugins
 pub mod plugin;
 pub mod utils;
+pub mod trace;
 
 #[macro_use]
 pub mod serde;

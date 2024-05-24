@@ -40,6 +40,7 @@ use uuid::Uuid;
 use datafusion::execution::runtime_env::{RuntimeConfig, RuntimeEnv};
 use datafusion_proto::protobuf::{LogicalPlanNode, PhysicalPlanNode};
 use opentelemetry_sdk::runtime;
+use tonic::metadata::MetadataMap;
 use tracing_subscriber::layer::SubscriberExt;
 use tracing_subscriber::util::SubscriberInitExt;
 
@@ -64,6 +65,7 @@ use ballista_core::utils::{
     create_grpc_client_connection, create_grpc_server, get_time_before,
 };
 use ballista_core::BALLISTA_VERSION;
+use ballista_core::trace::init_tracing;
 
 use crate::execution_engine::ExecutionEngine;
 use crate::executor::{Executor, TasksDrainedFuture};
@@ -127,13 +129,12 @@ pub async fn start_executor_process(opt: Arc<ExecutorProcessConfig>) -> Result<(
                 tracing_appender::rolling::never(log_dir, &opt.log_file_name_prefix)
             }
         };
-        tracing_subscriber::fmt()
+        let fmt_layer = tracing_subscriber::fmt::layer()
             .with_ansi(false)
             .with_thread_names(opt.print_thread_info)
             .with_thread_ids(opt.print_thread_info)
-            .with_writer(log_file)
-            .with_env_filter(log_filter)
-            .init();
+            .with_writer(log_file);
+        init_tracing(Box::new(fmt_layer));
     } else {
         // Console layer
         let fmt_layer = tracing_subscriber::fmt::layer()
@@ -141,29 +142,7 @@ pub async fn start_executor_process(opt: Arc<ExecutorProcessConfig>) -> Result<(
             .with_thread_names(opt.print_thread_info)
             .with_thread_ids(opt.print_thread_info)
             .with_writer(io::stdout);
-            // .with_env_filter(log_filter)
-            // .init();
-
-        // log level filtering here
-        let filter_layer = EnvFilter::try_from_default_env()
-            .or_else(|_| EnvFilter::try_new("info"))
-            .unwrap();
-
-        let registry = tracing_subscriber::registry()
-            .with(filter_layer)
-            .with(fmt_layer);
-
-        let otlp_exporter = opentelemetry_otlp::new_exporter().tonic();
-
-        let tracer = opentelemetry_otlp::new_pipeline()
-            .tracing()
-            .with_exporter(otlp_exporter)
-            // .install_simple()
-            .install_batch(runtime::Tokio)
-            .unwrap();
-
-        let otel_layer = tracing_opentelemetry::layer().with_tracer(tracer);
-        registry.with(otel_layer).init();
+        init_tracing(Box::new(fmt_layer));
     }
 
     let addr = format!("{}:{}", opt.bind_host, opt.port);
