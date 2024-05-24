@@ -50,7 +50,7 @@ eof
 FROM debian:bookworm-slim AS runtime
 RUN <<eof
   #!/bin/bash
-  apt-get update && apt-get -y install curl psutils less awscli python3-pip nginx netcat-traditional
+  apt-get update && apt-get -y install curl less nginx netcat-traditional
 eof
 
 COPY --from=builder /usr/local/bin/ballista-scheduler /usr/local/bin/ballista-scheduler
