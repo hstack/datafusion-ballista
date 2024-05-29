@@ -297,6 +297,7 @@ pub fn default_task_runner() -> impl TaskRunner {
                 start_exec_time: timestamp,
                 end_exec_time: timestamp,
                 metrics: vec![],
+                json_trace: String::new(),
                 status: Some(task_status::Status::Successful(SuccessfulTask {
                     executor_id: executor_id.clone(),
                     partitions: partitions.clone(),
@@ -1041,6 +1042,7 @@ pub fn mock_completed_task(task: TaskDescription, executor_id: &str) -> TaskStat
         start_exec_time: 0,
         end_exec_time: 0,
         metrics: vec![],
+        json_trace: String::new(),
         status: Some(task_status::Status::Successful(protobuf::SuccessfulTask {
             executor_id: executor_id.to_owned(),
             partitions,
@@ -1079,6 +1081,7 @@ pub fn mock_failed_task(task: TaskDescription, failed_task: FailedTask) -> TaskS
         start_exec_time: 0,
         end_exec_time: 0,
         metrics: vec![],
+        json_trace: String::new(),
         status: Some(task_status::Status::Failed(failed_task)),
     }
 }

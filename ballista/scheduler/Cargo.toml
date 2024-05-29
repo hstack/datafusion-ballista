@@ -79,6 +79,7 @@ tower = { version = "0.4" }
 tracing = { workspace = true }
 tracing-appender = { workspace = true }
 tracing-subscriber = { workspace = true }
+trace = { workspace = true }
 uuid = { version = "1.0", features = ["v4"] }
 warp = "0.3"
 deltalake = {  version = "0.17.3", features = ["datafusion", "datafusion-ext", "s3"] }

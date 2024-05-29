@@ -75,6 +75,7 @@ pub fn as_task_status(
                 start_exec_time: execution_times.start_exec_time,
                 end_exec_time: execution_times.end_exec_time,
                 metrics,
+                json_trace: String::new(),
                 status: Some(task_status::Status::Successful(SuccessfulTask {
                     executor_id,
                     partitions,
@@ -95,6 +96,7 @@ pub fn as_task_status(
                 start_exec_time: execution_times.start_exec_time,
                 end_exec_time: execution_times.end_exec_time,
                 metrics,
+                json_trace: String::new(),
                 status: Some(task_status::Status::Failed(FailedTask::from(e))),
             }
         }
