@@ -248,11 +248,16 @@ async fn run_received_task<T: 'static + AsLogicalPlan, U: 'static + AsExecutionP
         debug!("Statistics: {:?}", execution_result);
 
         let plan_metrics = query_stage_exec.collect_plan_metrics();
-        let operator_metrics = plan_metrics
+        let operator_metrics = plan_metrics.0
             .into_iter()
             .map(|m| m.try_into())
             .collect::<Result<Vec<_>, BallistaError>>()
             .ok();
+
+        let json_trace = serde_json::to_string(&plan_metrics.1
+            .into_iter()
+            .collect::<Vec<_>>()
+        ).unwrap();
 
         let end_exec_time = SystemTime::now()
             .duration_since(UNIX_EPOCH)
@@ -273,6 +278,7 @@ async fn run_received_task<T: 'static + AsLogicalPlan, U: 'static + AsExecutionP
             part,
             operator_metrics,
             task_execution_times,
+            json_trace
         ));
 
         // Release the permit after the work is done

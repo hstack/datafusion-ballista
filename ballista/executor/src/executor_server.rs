@@ -388,7 +388,7 @@ impl<T: 'static + AsLogicalPlan, U: 'static + AsExecutionPlan> ExecutorServer<T,
         debug!("Statistics: {:?}", execution_result);
 
         let plan_metrics = query_stage_exec.collect_plan_metrics();
-        let operator_metrics = match plan_metrics
+        let operator_metrics = match plan_metrics.0
             .into_iter()
             .map(|m| m.try_into())
             .collect::<Result<Vec<_>, BallistaError>>()
@@ -396,6 +396,11 @@ impl<T: 'static + AsLogicalPlan, U: 'static + AsExecutionPlan> ExecutorServer<T,
             Ok(metrics) => Some(metrics),
             Err(_) => None,
         };
+        let json_trace = serde_json::to_string(&plan_metrics.1
+            .into_iter()
+            .collect::<Vec<_>>()
+        ).unwrap();
+
         let executor_id = &self.executor.metadata.id;
 
         let end_exec_time = SystemTime::now()
@@ -416,6 +421,7 @@ impl<T: 'static + AsLogicalPlan, U: 'static + AsExecutionPlan> ExecutorServer<T,
             part,
             operator_metrics,
             task_execution_times,
+            json_trace
         );
 
         let scheduler_id = curator_task.scheduler_id;

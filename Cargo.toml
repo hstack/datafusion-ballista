@@ -48,10 +48,14 @@ tonic-build = { version = "0.11.0", default-features = false, features = [
     "transport",
     "prost"
 ] }
+prost-build = "0.12.6"
 tracing = "0.1.40"
 tracing-appender = "0.2.2"
 tracing-subscriber = { version = "0.3.18", features = ["env-filter", "registry"] }
 trace = { git = "https://github.com/hstack/influxdb3_core", branch = "serde" }
+iox_query = { git = "https://github.com/hstack/influxdb3_core", branch = "serde" }
+serde = "1.0.203"
+serde_json = "1.0.117"
 
 # the versions need to be staggered like this, or it won't compile
 opentelemetry = "0.22.0"

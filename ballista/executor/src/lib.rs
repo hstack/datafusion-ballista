@@ -56,6 +56,7 @@ pub fn as_task_status(
     partition_id: PartitionId,
     operator_metrics: Option<Vec<OperatorMetricsSet>>,
     execution_times: TaskExecutionTimes,
+    json_trace: String
 ) -> TaskStatus {
     let metrics = operator_metrics.unwrap_or_default();
     match execution_result {
@@ -75,7 +76,7 @@ pub fn as_task_status(
                 start_exec_time: execution_times.start_exec_time,
                 end_exec_time: execution_times.end_exec_time,
                 metrics,
-                json_trace: String::new(),
+                json_trace,
                 status: Some(task_status::Status::Successful(SuccessfulTask {
                     executor_id,
                     partitions,

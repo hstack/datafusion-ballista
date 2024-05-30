@@ -68,6 +68,9 @@ tracing = { workspace = true }
 tracing-appender = { workspace = true }
 tracing-subscriber = { workspace = true }
 trace = { workspace = true }
+iox_query = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
 uuid = { version = "1.0", features = ["v4"] }
 deltalake = {  version = "0.17.3", features = ["datafusion", "datafusion-ext", "s3"] }
 deltalake-aws = "0.1.2"
@@ -81,6 +84,7 @@ tracing-opentelemetry = { workspace = true }
 [dev-dependencies]
 
 [build-dependencies]
+prost-build = "0.12.6"
 configure_me_codegen = { workspace = true }
 
 # use libc on unix like platforms to set worker priority in DedicatedExecutor

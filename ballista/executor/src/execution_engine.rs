@@ -25,6 +25,10 @@ use datafusion::physical_plan::metrics::MetricsSet;
 use datafusion::physical_plan::ExecutionPlan;
 use std::fmt::Debug;
 use std::sync::Arc;
+use std::time::SystemTime;
+use chrono::DateTime;
+use trace::RingBufferTraceCollector;
+use trace::span::Span;
 
 /// Execution engine extension point
 
@@ -50,7 +54,7 @@ pub trait QueryStageExecutor: Sync + Send + Debug {
         context: Arc<TaskContext>,
     ) -> Result<Vec<ShuffleWritePartition>>;
 
-    fn collect_plan_metrics(&self) -> Vec<MetricsSet>;
+    fn collect_plan_metrics(&self) -> (Vec<MetricsSet>, Vec<Span>);
 }
 
 pub struct DefaultExecutionEngine {}
@@ -108,7 +112,12 @@ impl QueryStageExecutor for DefaultQueryStageExec {
             .await
     }
 
-    fn collect_plan_metrics(&self) -> Vec<MetricsSet> {
-        utils::collect_plan_metrics(&self.shuffle_writer)
+    fn collect_plan_metrics(&self) -> (Vec<MetricsSet>, Vec<Span>) {
+        let metrics = utils::collect_plan_metrics(&self.shuffle_writer);
+        let collector = Arc::new(RingBufferTraceCollector::new(128/*metrics.len() + 1*/));
+        let now = SystemTime::now();
+        let root: Span = Span::root(self.shuffle_writer.stage_id().to_string(), collector.clone());
+        iox_query::exec::query_tracing::send_metrics_to_tracing(now.into(), &root, &self.shuffle_writer, true);
+        (metrics, collector.spans())
     }
 }
