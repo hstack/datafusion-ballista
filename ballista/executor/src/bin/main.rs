@@ -88,7 +88,8 @@ async fn main() -> Result<()> {
         execution_engine: None,
     };
 
-    deltalake_aws::register_handlers(None);
+    deltalake::aws::register_handlers(None);
+    deltalake::azure::register_handlers(None);
 
     start_executor_process(Arc::new(config)).await
 }

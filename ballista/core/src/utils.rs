@@ -279,7 +279,9 @@ pub fn create_df_ctx_with_ballista_query_planner<T: 'static + AsLogicalPlan>(
         ),
     )
     .with_query_planner(planner);
-    deltalake_aws::register_handlers(None);
+
+    deltalake::aws::register_handlers(None);
+    deltalake::azure::register_handlers(None);
     session_state
         .table_factories_mut()
         .insert("DELTATABLE".to_string(), Arc::new(DeltaTableFactory {}));

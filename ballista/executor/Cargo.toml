@@ -72,8 +72,7 @@ iox_query = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
 uuid = { version = "1.0", features = ["v4"] }
-deltalake = {  version = "0.17.3", features = ["datafusion", "datafusion-ext", "s3"] }
-deltalake-aws = "0.1.2"
+deltalake = { workspace = true }
 
 # opentelemetry tracing stack
 opentelemetry = { workspace = true }
