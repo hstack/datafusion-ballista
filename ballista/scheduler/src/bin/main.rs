@@ -19,12 +19,8 @@
 
 use std::sync::Arc;
 use std::{env, io};
-use std::io::Stdout;
 
 use anyhow::Result;
-use opentelemetry::global;
-use opentelemetry_sdk::propagation::TraceContextPropagator;
-use opentelemetry_sdk::runtime;
 
 use crate::config::{Config, ResultExt};
 use ballista_core::config::LogRotationPolicy;
@@ -35,11 +31,7 @@ use ballista_scheduler::config::{
     ClusterStorageConfig, SchedulerConfig, TaskDistribution, TaskDistributionPolicy,
 };
 use ballista_scheduler::scheduler_process::start_server;
-use tracing_subscriber::{EnvFilter, Registry};
-use tracing_subscriber::fmt::format::{DefaultFields, Format};
-use tracing_subscriber::fmt::Layer;
-use tracing_subscriber::layer::{Layered, SubscriberExt};
-use tracing_subscriber::util::SubscriberInitExt;
+use tracing_subscriber::EnvFilter;
 use ballista_core::trace::init_tracing;
 
 #[macro_use]

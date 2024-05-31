@@ -38,7 +38,7 @@ pub enum Keyspace {
 
 impl Keyspace {
     pub fn strip_prefix<'a>(&'a self, key: &'a str) -> Option<&'a str> {
-        key.strip_prefix(&format!("{self:?}/"))
+        key.strip_prefix(&format!("/{self:?}/"))
     }
 }
 

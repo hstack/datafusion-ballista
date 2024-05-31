@@ -48,7 +48,6 @@ use datafusion::prelude::{
     SessionConfig, SessionContext,
 };
 use datafusion::sql::parser::{DFParser, Statement as DFStatement};
-use sqlparser::test_utils::table;
 
 struct BallistaContextState {
     /// Ballista configuration

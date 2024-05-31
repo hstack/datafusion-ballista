@@ -71,6 +71,7 @@ prost = "0.12"
 prost-types = { version = "0.12.0" }
 rand = "0.8"
 serde = { version = "1", features = ["derive"] }
+serde_json = { workspace = true }
 sled_package = { package = "sled", version = "0.34", optional = true }
 tokio = { version = "1.0", features = ["full"] }
 tokio-stream = { version = "0.1", features = ["net"], optional = true }
@@ -80,6 +81,7 @@ tracing = { workspace = true }
 tracing-appender = { workspace = true }
 tracing-subscriber = { workspace = true }
 trace = { workspace = true }
+iox_query = { workspace = true }
 uuid = { version = "1.0", features = ["v4"] }
 warp = "0.3"
 deltalake = {  version = "0.17.3", features = ["datafusion", "datafusion-ext", "s3"] }

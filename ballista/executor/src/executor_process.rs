@@ -26,7 +26,7 @@ use std::{env, io};
 use anyhow::{Context, Result};
 use arrow_flight::flight_service_server::FlightServiceServer;
 use futures::stream::FuturesUnordered;
-use futures::{SinkExt, StreamExt};
+use futures::StreamExt;
 use log::{error, info, warn};
 use tempfile::TempDir;
 use tokio::fs::DirEntry;
@@ -39,10 +39,6 @@ use uuid::Uuid;
 
 use datafusion::execution::runtime_env::{RuntimeConfig, RuntimeEnv};
 use datafusion_proto::protobuf::{LogicalPlanNode, PhysicalPlanNode};
-use opentelemetry_sdk::runtime;
-use tonic::metadata::MetadataMap;
-use tracing_subscriber::layer::SubscriberExt;
-use tracing_subscriber::util::SubscriberInitExt;
 
 #[cfg(not(windows))]
 use ballista_core::cache_layer::{

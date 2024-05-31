@@ -26,7 +26,6 @@ use datafusion::physical_plan::ExecutionPlan;
 use std::fmt::Debug;
 use std::sync::Arc;
 use std::time::SystemTime;
-use chrono::DateTime;
 use trace::RingBufferTraceCollector;
 use trace::span::Span;
 

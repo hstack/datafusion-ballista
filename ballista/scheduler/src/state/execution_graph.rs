@@ -436,7 +436,7 @@ impl ExecutionGraph {
                             successful_task,
                         )) = task_status.status
                         {
-                            // update task metrics for successfu task
+                            // update task metrics for successful task
                             running_stage
                                 .update_task_metrics(partition_id, operator_metrics)?;
 
@@ -899,6 +899,7 @@ impl ExecutionGraph {
                     task_status: task_status::Status::Running(RunningTask {
                         executor_id: executor_id.to_owned()
                     }),
+                    json_trace: String::from(""),
                 };
 
                 // Set the task info to Running for new task
@@ -1502,6 +1503,7 @@ pub(crate) fn create_task_info(executor_id: String, task_id: usize) -> TaskInfo 
         end_exec_time: 0,
         finish_time: 0,
         task_status: task_status::Status::Running(RunningTask { executor_id }),
+        json_trace: "".to_string(),
     }
 }
 

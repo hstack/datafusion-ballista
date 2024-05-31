@@ -37,11 +37,13 @@ use log::{error, warn};
 
 use crate::scheduler_server::event::QueryStageSchedulerEvent;
 use crate::scheduler_server::query_stage_scheduler::QueryStageScheduler;
+use crate::scheduler_server::trace_manager::TraceManager;
 
 use crate::state::executor_manager::ExecutorManager;
 
 use crate::state::task_manager::TaskLauncher;
 use crate::state::SchedulerState;
+
 
 // include the generated protobuf source as a submodule
 #[allow(clippy::all)]
@@ -53,6 +55,7 @@ pub mod event;
 mod external_scaler;
 mod grpc;
 pub(crate) mod query_stage_scheduler;
+pub(crate) mod trace_manager;
 
 pub(crate) type SessionBuilder = fn(SessionConfig) -> SessionState;
 
@@ -63,6 +66,7 @@ pub struct SchedulerServer<T: 'static + AsLogicalPlan, U: 'static + AsExecutionP
     pub state: Arc<SchedulerState<T, U>>,
     pub(crate) query_stage_event_loop: EventLoop<QueryStageSchedulerEvent>,
     query_stage_scheduler: Arc<QueryStageScheduler<T, U>>,
+    trace_manager: Arc<TraceManager<T, U>>,
     config: Arc<SchedulerConfig>,
 }
 
@@ -74,12 +78,14 @@ impl<T: 'static + AsLogicalPlan, U: 'static + AsExecutionPlan> SchedulerServer<T
         config: Arc<SchedulerConfig>,
         metrics_collector: Arc<dyn SchedulerMetricsCollector>,
     ) -> Self {
+        let job_state = cluster.job_state().clone();
         let state = Arc::new(SchedulerState::new(
             cluster,
             codec,
             scheduler_name.clone(),
             config.clone(),
         ));
+
         let query_stage_scheduler = Arc::new(QueryStageScheduler::new(
             state.clone(),
             metrics_collector,
@@ -90,6 +96,10 @@ impl<T: 'static + AsLogicalPlan, U: 'static + AsExecutionPlan> SchedulerServer<T
             config.event_loop_buffer_size as usize,
             query_stage_scheduler.clone(),
         );
+        let trace_manager = Arc::new(TraceManager::new(
+            state.clone(),
+            job_state
+        ));
 
         Self {
             scheduler_name,
@@ -97,6 +107,7 @@ impl<T: 'static + AsLogicalPlan, U: 'static + AsExecutionPlan> SchedulerServer<T
             state,
             query_stage_event_loop,
             query_stage_scheduler,
+            trace_manager,
             config,
         }
     }
@@ -110,6 +121,7 @@ impl<T: 'static + AsLogicalPlan, U: 'static + AsExecutionPlan> SchedulerServer<T
         metrics_collector: Arc<dyn SchedulerMetricsCollector>,
         task_launcher: Arc<dyn TaskLauncher>,
     ) -> Self {
+        let job_state = cluster.job_state();
         let state = Arc::new(SchedulerState::new_with_task_launcher(
             cluster,
             codec,
@@ -127,6 +139,10 @@ impl<T: 'static + AsLogicalPlan, U: 'static + AsExecutionPlan> SchedulerServer<T
             config.event_loop_buffer_size as usize,
             query_stage_scheduler.clone(),
         );
+        let trace_manager = Arc::new(TraceManager::new(
+            state.clone(),
+            job_state.clone()
+        ));
 
         Self {
             scheduler_name,
@@ -134,6 +150,7 @@ impl<T: 'static + AsLogicalPlan, U: 'static + AsExecutionPlan> SchedulerServer<T
             state,
             query_stage_event_loop,
             query_stage_scheduler,
+            trace_manager,
             config,
         }
     }
@@ -141,6 +158,7 @@ impl<T: 'static + AsLogicalPlan, U: 'static + AsExecutionPlan> SchedulerServer<T
     pub async fn init(&mut self) -> Result<()> {
         self.state.init().await?;
         self.query_stage_event_loop.start()?;
+        Arc::get_mut(&mut self.trace_manager).unwrap().start().await?;
         self.expire_dead_executors()?;
 
         Ok(())

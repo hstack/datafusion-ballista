@@ -223,19 +223,21 @@ pub(crate) struct FailedStage {
 #[derive(Clone)]
 pub(crate) struct TaskInfo {
     /// Task ID
-    pub(super) task_id: usize,
+    pub(crate) task_id: usize,
     /// Task scheduled time
-    pub(super) scheduled_time: u128,
+    pub(crate) scheduled_time: u128,
     /// Task launch time
-    pub(super) launch_time: u128,
+    pub(crate) launch_time: u128,
     /// Start execution time
-    pub(super) start_exec_time: u128,
+    pub(crate) start_exec_time: u128,
     /// Finish execution time
-    pub(super) end_exec_time: u128,
+    pub(crate) end_exec_time: u128,
     /// Task finish time
-    pub(super) finish_time: u128,
+    pub(crate) finish_time: u128,
     /// Task Status
-    pub(super) task_status: task_status::Status,
+    pub(crate) task_status: task_status::Status,
+    /// encoded traces
+    pub(crate) json_trace: String,
 }
 
 impl UnresolvedStage {
@@ -722,6 +724,7 @@ impl RunningStage {
                 .unwrap()
                 .as_millis(),
             task_status: task_status.clone(),
+            json_trace: status.json_trace,
         };
         self.task_infos[partition_id] = Some(updated_task_info);
 
@@ -942,6 +945,7 @@ impl SuccessfulStage {
                             count_to_failures: false,
                             failed_reason: Some(FailedReason::ResultLost(ResultLost {})),
                         }),
+                        json_trace: "".to_string(),
                     };
                     reset += 1;
                 }
@@ -1299,6 +1303,7 @@ fn decode_taskinfo(task_info: protobuf::TaskInfo) -> TaskInfo {
         end_exec_time: task_info.end_exec_time as u128,
         finish_time: task_info.finish_time as u128,
         task_status: task_info_status,
+        json_trace: task_info.json_trace,
     }
 }
 
@@ -1319,5 +1324,6 @@ fn encode_taskinfo(task_info: TaskInfo, partition_id: usize) -> protobuf::TaskIn
         end_exec_time: task_info.end_exec_time as u64,
         finish_time: task_info.finish_time as u64,
         status: Some(task_info_status),
+        json_trace: task_info.json_trace,
     }
 }

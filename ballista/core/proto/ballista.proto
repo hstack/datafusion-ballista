@@ -156,6 +156,7 @@ message TaskInfo {
     FailedTask failed = 9;
     SuccessfulTask successful = 10;
   }
+  string json_trace = 11;
 }
 
 message GraphStageInput {

@@ -229,6 +229,8 @@ pub struct TaskInfo {
     /// Scheduler side finish time
     #[prost(uint64, tag = "7")]
     pub finish_time: u64,
+    #[prost(string, tag = "11")]
+    pub json_trace: ::prost::alloc::string::String,
     #[prost(oneof = "task_info::Status", tags = "8, 9, 10")]
     pub status: ::core::option::Option<task_info::Status>,
 }
