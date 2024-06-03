@@ -1,3 +1,5 @@
+use chrono::{DateTime, Utc};
+use log::{error, info};
 use opentelemetry::propagation::Extractor;
 use opentelemetry::{global, propagation::Injector};
 use opentelemetry_sdk::propagation::TraceContextPropagator;
@@ -6,12 +8,10 @@ use std::borrow::Cow;
 use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::SystemTime;
-use chrono::{DateTime, Utc};
-use log::{error, info};
 use tonic::metadata::KeyRef;
 use tonic::{
     metadata::{MetadataKey, MetadataMap, MetadataValue},
-    Request
+    Request,
 };
 use tracing::{warn, Span};
 use tracing_opentelemetry::OpenTelemetrySpanExt;
@@ -19,9 +19,12 @@ use tracing_subscriber::layer::SubscriberExt;
 use tracing_subscriber::util::SubscriberInitExt;
 use tracing_subscriber::{EnvFilter, Layer, Registry};
 
-use opentelemetry::trace::{Event, Link, SpanContext, SpanId, SpanKind, Status, TraceFlags, TraceId, TraceState, Tracer, TraceError, SpanBuilder};
+use opentelemetry::trace::{
+    Event, Link, SpanBuilder, SpanContext, SpanId, SpanKind, Status, TraceError,
+    TraceFlags, TraceId, TraceState, Tracer,
+};
 use opentelemetry::{Context, Key, KeyValue, Value};
-use opentelemetry_otlp::{SpanExporter as OTLPSpanExporter};
+use opentelemetry_otlp::SpanExporter as OTLPSpanExporter;
 use opentelemetry_sdk::export::trace::{ExportResult, SpanData, SpanExporter};
 use opentelemetry_sdk::trace::SpanEvents;
 use trace::ctx::SpanContext as IOXSpanContext;
@@ -29,7 +32,9 @@ use trace::ctx::{SpanId as IOXSpanId, TraceId as IOXTraceId};
 use trace::span::{MetaValue, Span as IOXSpan, SpanStatus as IOXSpanStatus};
 
 pub fn build_exporter() -> Result<OTLPSpanExporter, TraceError> {
-    opentelemetry_otlp::new_exporter().tonic().build_span_exporter()
+    opentelemetry_otlp::new_exporter()
+        .tonic()
+        .build_span_exporter()
 }
 
 pub fn build_tracer() -> Result<opentelemetry_sdk::trace::Tracer, TraceError> {
@@ -43,6 +48,7 @@ pub fn build_tracer() -> Result<opentelemetry_sdk::trace::Tracer, TraceError> {
 
 pub fn init_tracing(fmt_layer: Box<dyn Layer<Registry> + Send + Sync + 'static>) {
     global::set_text_map_propagator(TraceContextPropagator::new());
+    // global::tracer("name").
     // global::set_error_handler(|error| error!(error = format!("{error:#}"), "otel error"))
     //     .context("set error handler")?;
 
@@ -241,15 +247,11 @@ fn convert_influx_spans_to_otlp_span_data(
         .collect::<Vec<SpanData>>()
 }
 
-pub fn enclosing_start_end_time(spans: &Vec<IOXSpan>) -> (Option<DateTime<Utc>>, Option<DateTime<Utc>>) {
-    let min_start_time = spans
-        .iter()
-        .filter_map(|s|s.start)
-        .min();
-    let max_end_time =spans
-        .iter()
-        .filter_map(|s|s.end)
-        .max();
+pub fn enclosing_start_end_time(
+    spans: &Vec<IOXSpan>,
+) -> (Option<DateTime<Utc>>, Option<DateTime<Utc>>) {
+    let min_start_time = spans.iter().filter_map(|s| s.start).min();
+    let max_end_time = spans.iter().filter_map(|s| s.end).max();
     (min_start_time, max_end_time)
 }
 
@@ -259,7 +261,14 @@ pub async fn export_spans_with_tracer(
     input: Vec<IOXSpan>,
 ) -> ExportResult {
     let span_data = convert_influx_spans_to_otlp_span_data(&tracer, input);
-    Arc::get_mut(exporter).unwrap().export(span_data).await
+    match build_exporter() {
+        Ok(mut span_exporter) => span_exporter.export(span_data).await,
+        Err(e) => {
+            error!("export_spans: Error creating exporter: {:?}", e);
+            Err("Error creating exporter".into())
+        }
+    }
 
+    // this explodes, . This is the only place where we call get_mut on this variable
+    // Arc::get_mut(exporter).unwrap().export(span_data).await
 }
-
