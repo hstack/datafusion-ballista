@@ -54,12 +54,11 @@ impl<T: 'static + AsLogicalPlan, U: 'static + AsExecutionPlan> TraceManager<T, U
     }
 
     async fn run(&self) {
-        let job_state = self.job_state.clone();
         let mut event_stream = self.job_state.job_state_events().await.unwrap();
         let stopped = self.stopped.clone();
         let state = self.state.clone();
         let tracer = self.tracer.clone();
-        let span_exporter = self.span_exporter.clone();
+        let mut span_exporter = self.span_exporter.clone();
 
         tokio::spawn(async move {
             info!("Starting the TraceManager event loop");
@@ -90,7 +89,11 @@ impl<T: 'static + AsLogicalPlan, U: 'static + AsExecutionPlan> TraceManager<T, U
                                     if let Some(execution_graph) = execution_graph_opt {
                                         let spans = make_spans_for_execution_graph(job_id, execution_graph.as_ref());
                                         info!("TraceManager computed spans: {:#?}", &spans);
-                                        let export_result = export_spans_with_tracer(tracer.as_ref(), spans).await;
+                                        let export_result = export_spans_with_tracer(
+                                            tracer.as_ref(),
+                                            &mut span_exporter,
+                                            spans
+                                        ).await;
                                         info!("TraceManager export_result: {export_result:?}");
 
                                     } else {

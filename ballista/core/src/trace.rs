@@ -4,6 +4,7 @@ use opentelemetry_sdk::propagation::TraceContextPropagator;
 use opentelemetry_sdk::runtime;
 use std::borrow::Cow;
 use std::collections::HashMap;
+use std::sync::Arc;
 use std::time::SystemTime;
 use chrono::{DateTime, Utc};
 use log::{error, info};
@@ -18,10 +19,11 @@ use tracing_subscriber::layer::SubscriberExt;
 use tracing_subscriber::util::SubscriberInitExt;
 use tracing_subscriber::{EnvFilter, Layer, Registry};
 
-use opentelemetry::trace::{Event, Link, SpanContext, SpanId, SpanKind, Status, TraceFlags, TraceId, TraceState, Tracer, TraceError};
+use opentelemetry::trace::{Event, Link, SpanContext, SpanId, SpanKind, Status, TraceFlags, TraceId, TraceState, Tracer, TraceError, SpanBuilder};
 use opentelemetry::{Context, Key, KeyValue, Value};
 use opentelemetry_otlp::{SpanExporter as OTLPSpanExporter};
 use opentelemetry_sdk::export::trace::{ExportResult, SpanData, SpanExporter};
+use opentelemetry_sdk::trace::SpanEvents;
 use trace::ctx::SpanContext as IOXSpanContext;
 use trace::ctx::{SpanId as IOXSpanId, TraceId as IOXTraceId};
 use trace::span::{MetaValue, Span as IOXSpan, SpanStatus as IOXSpanStatus};
@@ -162,8 +164,7 @@ fn convert_influx_span_to_otlp_span_data(
         .unwrap_or_else(|| chrono::offset::Utc::now())
         .into();
 
-    let mut builder = tracer
-        .span_builder(span.name.clone())
+    let mut builder = SpanBuilder::from_name(span.name.clone())
         .with_trace_id(TraceId::from_bytes(u128::to_be_bytes(
             span.ctx.trace_id.get(),
         )))
@@ -185,6 +186,7 @@ fn convert_influx_span_to_otlp_span_data(
             Link::new(span_context, vec![])
         })
         .collect::<Vec<Link>>();
+
     builder = builder.with_links(out_links);
     let out_events: Vec<Event> = span
         .events
@@ -251,45 +253,13 @@ pub fn enclosing_start_end_time(spans: &Vec<IOXSpan>) -> (Option<DateTime<Utc>>,
     (min_start_time, max_end_time)
 }
 
-pub async fn export_spans(
-    input: Vec<IOXSpan>,
-) -> ExportResult {
-    match build_tracer() {
-        Ok(tracer) => {
-            match build_exporter() {
-                Ok(mut span_exporter) => {
-                    span_exporter
-                        .export(convert_influx_spans_to_otlp_span_data(&tracer, input))
-                        .await
-                }
-                Err(e) => {
-                    error!("export_spans: Error creating exporter: {:?}", e);
-                    Err("Error creating exporter".into())
-                }
-            }
-        },
-        Err(e) => {
-            error!("export_spans: ERROR CREATING TRACER: {:?}", e);
-            Err(format!("Error creating tracer: {:?}", e).into())
-        }
-    }
-}
-
 pub async fn export_spans_with_tracer(
     tracer: &opentelemetry_sdk::trace::Tracer,
+    exporter: &mut Arc<OTLPSpanExporter>,
     input: Vec<IOXSpan>,
 ) -> ExportResult {
     let span_data = convert_influx_spans_to_otlp_span_data(&tracer, input);
-    match build_exporter() {
-        Ok(mut span_exporter) => {
-            span_exporter
-                .export(span_data)
-                .await
-        }
-        Err(e) => {
-            error!("export_spans: Error creating exporter: {:?}", e);
-            Err("Error creating exporter".into())
-        }
-    }
+    Arc::get_mut(exporter).unwrap().export(span_data).await
+
 }
 
