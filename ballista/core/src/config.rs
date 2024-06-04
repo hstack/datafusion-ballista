@@ -26,6 +26,8 @@ use std::result;
 use crate::error::{BallistaError, Result};
 
 use datafusion::arrow::datatypes::DataType;
+use datafusion::common::extensions_options;
+use datafusion::config::ConfigExtension;
 
 pub const BALLISTA_JOB_NAME: &str = "ballista.job.name";
 pub const BALLISTA_DEFAULT_SHUFFLE_PARTITIONS: &str = "ballista.shuffle.partitions";
@@ -72,6 +74,20 @@ impl ConfigEntry {
             default_value,
         }
     }
+}
+
+// TODO: use AepStorageCredentials from aep-rs
+extensions_options! {
+    pub struct AepAzureCreds {
+        pub location: String, default = String::new()
+        pub client_id: String, default = String::new()
+        pub client_secret: String, default = String::new()
+        pub tenant_id: String, default = String::new()
+    }
+}
+
+impl ConfigExtension for AepAzureCreds {
+    const PREFIX: &'static str = "aep";
 }
 
 /// Ballista configuration builder

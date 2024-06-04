@@ -51,7 +51,7 @@ use arrow_flight::flight_service_client::FlightServiceClient;
 use arrow_flight::sql::ProstMessageExt;
 use arrow_flight::utils::batches_to_flight_data;
 use arrow_flight::SchemaAsIpc;
-use ballista_core::config::BallistaConfig;
+use ballista_core::config::{AepAzureCreds, BallistaConfig};
 use ballista_core::serde::protobuf;
 use ballista_core::serde::protobuf::action::ActionType::FetchPartition;
 use ballista_core::serde::protobuf::job_status;
@@ -66,8 +66,10 @@ use datafusion::arrow::error::ArrowError;
 use datafusion::arrow::ipc::writer::{IpcDataGenerator, IpcWriteOptions};
 use datafusion::arrow::record_batch::RecordBatch;
 use datafusion::common::DFSchemaRef;
-use datafusion::logical_expr::LogicalPlan;
-use datafusion::prelude::SessionContext;
+use datafusion::dataframe::DataFrame;
+use datafusion::error::DataFusionError;
+use datafusion::logical_expr::{DdlStatement, LogicalPlan};
+use datafusion::prelude::{SessionContext, SQLOptions};
 use datafusion_proto::protobuf::{LogicalPlanNode, PhysicalPlanNode};
 use prost::Message;
 use tokio::sync::mpsc::{channel, Receiver, Sender};
@@ -190,12 +192,49 @@ impl FlightSqlServiceImpl {
         query: &str,
         ctx: &Arc<SessionContext>,
     ) -> Result<LogicalPlan, Status> {
-        let plan = ctx
-            .sql(query)
+        let plan = Self::sql_with_options(ctx, query)
             .await
             .and_then(|df| df.into_optimized_plan())
             .map_err(|e| Status::internal(format!("Error building plan: {e}")))?;
         Ok(plan)
+    }
+
+    // Copied from datafusion context, need to grab the options
+    // TODO: @ExecutorCredentials - add support for multiple tables and table formats.
+    async fn sql_with_options(
+        ctx: &Arc<SessionContext>,
+        sql: &str,
+    ) -> Result<DataFrame, DataFusionError> {
+        let options = SQLOptions::new();
+        let plan = ctx.state().create_logical_plan(sql).await?;
+
+        if let LogicalPlan::Ddl(statement) = &plan {
+            if let DdlStatement::CreateExternalTable(create) = statement {
+
+                let state = ctx.state_weak_ref().upgrade().unwrap();
+                let mut state = state.write();
+                let cfg_opts = state.config_mut().options_mut();
+
+                // TODO: @ExecutorCredentials -consider a separate cache.
+                //  Only works with BALLISTA_SCHEDULER_ADVERTISE_FLIGHT_SQL_ENDPOINT=memory
+                cfg_opts.extensions.insert(AepAzureCreds::default());
+                cfg_opts.set("aep.location", create.location.as_str()).unwrap();
+
+                // TODO these should be inserted as prefixed and passed along to delta-rs
+                //  OR register the object store upfront
+                let keys = vec!["client_secret", "client_id", "tenant_id"];
+                for key in keys {
+                    if let Some(value) = create.options.get(key) {
+                        let dest = format!("aep.{}", key);
+                        cfg_opts.set(dest.as_str(), value.as_str()).unwrap();
+                    }
+                }
+
+            }
+        }
+
+        options.verify_plan(&plan)?;
+        ctx.execute_logical_plan(plan).await
     }
 
     async fn check_job(&self, job_id: &String) -> Result<Option<SuccessfulJob>, Status> {

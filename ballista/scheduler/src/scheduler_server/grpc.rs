@@ -15,7 +15,7 @@
 // specific language governing permissions and limitations
 // under the License.
 
-use ballista_core::config::{BallistaConfig, BALLISTA_JOB_NAME};
+use ballista_core::config::{BallistaConfig, BALLISTA_JOB_NAME, AepAzureCreds};
 use ballista_core::serde::protobuf::execute_query_params::{OptionalSessionId, Query};
 use std::collections::HashMap;
 use std::convert::TryInto;
@@ -29,7 +29,7 @@ use ballista_core::serde::protobuf::{
     ExecuteQueryParams, ExecuteQueryResult, ExecuteQuerySuccessResult, ExecutorHeartbeat,
     ExecutorStoppedParams, ExecutorStoppedResult, GetFileMetadataParams,
     GetFileMetadataResult, GetJobStatusParams, GetJobStatusResult, HeartBeatParams,
-    HeartBeatResult, PollWorkParams, PollWorkResult, RegisterExecutorParams,
+    HeartBeatResult, KeyValuePair, PollWorkParams, PollWorkResult, RegisterExecutorParams,
     RegisterExecutorResult, RemoveSessionParams, RemoveSessionResult,
     UpdateSessionParams, UpdateSessionResult, UpdateTaskStatusParams,
     UpdateTaskStatusResult,
@@ -52,7 +52,9 @@ use crate::config::TaskDistributionPolicy;
 use crate::scheduler_server::event::QueryStageSchedulerEvent;
 use datafusion::prelude::SessionContext;
 use std::time::{SystemTime, UNIX_EPOCH};
+use datafusion::config::ExtensionOptions;
 use tonic::{Request, Response, Status};
+use warp::header::value;
 
 use crate::scheduler_server::SchedulerServer;
 
@@ -137,8 +139,40 @@ impl<T: 'static + AsLogicalPlan, U: 'static + AsExecutionPlan> SchedulerGrpc
 
             let mut tasks = vec![];
             for (_, task) in schedulable_tasks {
+                let session_id = task.session_id.clone();
                 match self.state.task_manager.prepare_task_definition(task) {
-                    Ok(task_definition) => tasks.push(task_definition),
+                    Ok(mut task_definition) => {
+                        if let Ok(ctx) = self
+                            .state
+                            .session_manager
+                            .get_session(&session_id)
+                            .await
+                        {
+                            // TODO: @ExecutorCredentials - consider a separate cache.
+                            //  Only works with BALLISTA_SCHEDULER_ADVERTISE_FLIGHT_SQL_ENDPOINT=memory
+                            let state = ctx.state();
+                            debug!("Session config: {:?}", state.config());
+                            if let Some(creds) =
+                                state.config().options().extensions.get::<AepAzureCreds>()
+                            {
+                                // TODO: create Into for session to Vec<KeyValuePair> or HashMap
+                                // TODO: move inside prepare_task_definition
+                                // TODO: Consider an optimization to walk the plan with plan.apply
+                                //   to discover only the creds that need to be sent with this job
+                                //   see: ctx.state().resolve_table_references()
+                                for kv in creds.entries() {
+                                    if let Some(v) = kv.value {
+                                        task_definition.props.push(KeyValuePair {
+                                            // TODO: serialize full config (strings)
+                                            key: format!("aep.{}", kv.key),
+                                            value: v,
+                                        });
+                                    }
+                                }
+                            }
+                        }
+                        tasks.push(task_definition)
+                    }
                     Err(e) => {
                         error!("Error preparing task definition: {:?}", e);
                     }

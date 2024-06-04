@@ -15,7 +15,7 @@
 // specific language governing permissions and limitations
 // under the License.
 
-use datafusion::config::ConfigOptions;
+use datafusion::config::{ConfigOptions, ExtensionOptions};
 use datafusion::physical_plan::ExecutionPlan;
 
 use ballista_core::serde::protobuf::{
@@ -44,7 +44,12 @@ use std::ops::Deref;
 use std::sync::mpsc::{Receiver, Sender, TryRecvError};
 use std::time::{SystemTime, UNIX_EPOCH};
 use std::{sync::Arc, time::Duration};
+use datafusion::execution::runtime_env::RuntimeEnv;
+use deltalake::delta_datafusion::DeltaScan;
+use deltalake::logstore::logstore_for;
 use tonic::transport::Channel;
+use url::Url;
+use ballista_core::config::AepAzureCreds;
 
 pub async fn poll_loop<T: 'static + AsLogicalPlan, U: 'static + AsExecutionPlan>(
     mut scheduler: SchedulerGrpcClient<Channel>,
@@ -174,6 +179,8 @@ async fn run_received_task<T: 'static + AsLogicalPlan, U: 'static + AsExecutionP
         task_props.insert(kv_pair.key, kv_pair.value);
     }
     let mut config = ConfigOptions::new();
+    config.extensions.insert(AepAzureCreds::default());
+
     for (k, v) in task_props {
         config.set(&k, &v)?;
     }
@@ -192,8 +199,31 @@ async fn run_received_task<T: 'static + AsLogicalPlan, U: 'static + AsExecutionP
     for window_func in executor.window_functions.clone() {
         task_window_functions.insert(window_func.0, window_func.1);
     }
-    let runtime = executor.get_runtime(false);
+    // let runtime = executor.get_runtime(false);
+    // TODO: @ExecutorCredentials - cache sessions instead of using either global or completely
+    //  new runtimes on each query
+    let runtime = Arc::new(RuntimeEnv::default());
     let session_id = task.session_id.clone();
+
+    // TODO: add support for multiple table credentials of different types via config ser
+    if let Some(creds) = session_config.options().extensions.get::<AepAzureCreds>() {
+        // Register the missing source table object store
+        let source_uri = Url::parse(creds.location.as_str()).unwrap();
+        let mut credentials = HashMap::new();
+        for kv in creds.entries() {
+            if kv.key != "location" {
+                if let Some(v) = kv.value {
+                    credentials.insert(kv.key, v.clone());
+                }
+            }
+        }
+
+        let source_store = logstore_for(source_uri, credentials).unwrap();
+        let object_store_url = source_store.object_store_url();
+        let source_store_url: &Url = object_store_url.as_ref();
+        runtime.register_object_store(source_store_url, source_store.object_store());
+    }
+
     let task_context = Arc::new(TaskContext::new(
         Some(task_identity.clone()),
         session_id,
