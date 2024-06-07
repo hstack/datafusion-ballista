@@ -14,8 +14,8 @@ use tonic::{
     Request,
 };
 use tracing::{warn, Span};
-use tracing_opentelemetry::OpenTelemetrySpanExt;
-use tracing_subscriber::layer::SubscriberExt;
+use tracing_opentelemetry::{OpenTelemetryLayer, OpenTelemetrySpanExt};
+use tracing_subscriber::layer::{Layered, SubscriberExt};
 use tracing_subscriber::util::SubscriberInitExt;
 use tracing_subscriber::{EnvFilter, Layer, Registry};
 
@@ -24,7 +24,7 @@ use opentelemetry::trace::{
     TraceFlags, TraceId, TraceState, Tracer,
 };
 use opentelemetry::{Context, Key, KeyValue, Value};
-use opentelemetry_otlp::SpanExporter as OTLPSpanExporter;
+use opentelemetry_otlp::{SpanExporter as OTLPSpanExporter, WithExportConfig};
 use opentelemetry_sdk::export::trace::{ExportResult, SpanData, SpanExporter};
 use opentelemetry_sdk::trace::SpanEvents;
 use trace::ctx::SpanContext as IOXSpanContext;
@@ -38,7 +38,13 @@ pub fn build_exporter() -> Result<OTLPSpanExporter, TraceError> {
 }
 
 pub fn build_tracer() -> Result<opentelemetry_sdk::trace::Tracer, TraceError> {
-    let otlp_exporter = opentelemetry_otlp::new_exporter().tonic();
+    let otlp_exporter = opentelemetry_otlp::new_exporter()
+        .tonic()
+        // ADR: FIXME we set this because there's no way to build a Span without a tracer,
+        // and there's no way to build a noop tracer
+        // there are noop tracers, but the actual internal Span type is different
+        .with_endpoint("http://inexistent-endpoint:54545");
+
     let tmp = opentelemetry_otlp::new_pipeline()
         .tracing()
         .with_exporter(otlp_exporter)
@@ -56,19 +62,19 @@ pub fn init_tracing(fmt_layer: Box<dyn Layer<Registry> + Send + Sync + 'static>)
         .or_else(|_| EnvFilter::try_new("info"))
         .unwrap();
 
-    let otlp_exporter = opentelemetry_otlp::new_exporter().tonic();
+    // let otlp_exporter = opentelemetry_otlp::new_exporter().tonic();
 
-    let tracer = opentelemetry_otlp::new_pipeline()
-        .tracing()
-        .with_exporter(otlp_exporter)
-        // .install_simple()
-        .install_batch(runtime::Tokio)
-        .unwrap();
-    let otel_layer = tracing_opentelemetry::layer().with_tracer(tracer);
+    // let tracer = opentelemetry_otlp::new_pipeline()
+    //     .tracing()
+    //     .with_exporter(otlp_exporter)
+    //     // .install_simple()
+    //     .install_batch(runtime::Tokio)
+    //     .unwrap();
+    // let otel_layer: OpenTelemetryLayer<Layered<Box<dyn Layer<Registry> + Send + Sync>, Registry, Registry>, opentelemetry_sdk::trace::Tracer> = tracing_opentelemetry::layer().with_tracer(tracer);
 
     tracing_subscriber::registry()
         .with(fmt_layer)
-        .with(otel_layer)
+        // .with(otel_layer)
         .with(filter_layer)
         .init();
 }

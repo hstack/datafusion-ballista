@@ -12,10 +12,11 @@ use futures::StreamExt;
 use log::{error, info, warn};
 use opentelemetry_otlp::SpanExporter as OTLPSpanExporter;
 use std::borrow::Cow;
+use std::collections::HashMap;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 use trace::ctx::{SpanContext, SpanId, TraceId};
-use trace::span::{Span, SpanStatus};
+use trace::span::{MetaValue, Span, SpanStatus};
 
 pub(crate) struct TraceManager<T: 'static + AsLogicalPlan, U: 'static + AsExecutionPlan> {
     state: Arc<SchedulerState<T, U>>,
@@ -65,46 +66,43 @@ impl<T: 'static + AsLogicalPlan, U: 'static + AsExecutionPlan> TraceManager<T, U
             while !stopped.load(Ordering::SeqCst) {
                 if let Some(event) = event_stream.next().await {
                     info!("TraceManager got event ! {:?}", event);
-                    match event {
-                        JobUpdated { ref job_id, status } => {
-                            let should_send = if let Some(job_status) = status.status {
-                                match job_status {
-                                    // Status::Failed(job) => true,
-                                    Status::Successful(job) => true,
-                                    _ => false,
+                    if let JobUpdated { ref job_id, status } = event {
+                        let should_send = if let Some(job_status) = status.status {
+                            match job_status {
+                                // Status::Failed(job) => true,
+                                Status::Successful(_) => true,
+                                _ => false,
+                            }
+                        } else {
+                            false
+                        };
+                        info!(
+                            "TraceManager job updated: {}, should_send: {}",
+                            job_id, should_send
+                        );
+                        if should_send {
+                            if let Ok(execution_graph_opt) = state
+                                .task_manager
+                                .get_job_execution_graph(job_id.as_str())
+                                .await
+                            {
+                                if let Some(execution_graph) = execution_graph_opt {
+                                    let spans = make_spans_for_execution_graph(job_id, execution_graph.as_ref());
+                                    info!("TraceManager sending {} spans for job {}", spans.len(), job_id);
+                                    let export_result = export_spans_with_tracer(
+                                        tracer.as_ref(),
+                                        &mut span_exporter,
+                                        spans
+                                    ).await;
+                                    info!("TraceManager export_result: {export_result:?}");
+
+                                } else {
+                                    error!("TraceManager - couldn't get execution graph for job {}", job_id);
                                 }
                             } else {
-                                false
-                            };
-                            info!(
-                                "TraceManager job updated: {}, should_send: {}",
-                                job_id, should_send
-                            );
-                            if should_send {
-                                if let Ok(execution_graph_opt) = state
-                                    .task_manager
-                                    .get_job_execution_graph(job_id.as_str())
-                                    .await
-                                {
-                                    if let Some(execution_graph) = execution_graph_opt {
-                                        let spans = make_spans_for_execution_graph(job_id, execution_graph.as_ref());
-                                        info!("TraceManager computed spans: {:#?}", &spans);
-                                        let export_result = export_spans_with_tracer(
-                                            tracer.as_ref(),
-                                            &mut span_exporter,
-                                            spans
-                                        ).await;
-                                        info!("TraceManager export_result: {export_result:?}");
-
-                                    } else {
-                                        error!("TraceManager - couldn't get execution graph for job {}", job_id);
-                                    }
-                                } else {
-                                    error!("TraceManager - couldn't get execution graph result for job {}", job_id);
-                                }
+                                error!("TraceManager - couldn't get execution graph result for job {}", job_id);
                             }
                         }
-                        _ => {}
                     };
                 } else {
                     info!("Event Channel closed, shutting down");
@@ -124,14 +122,16 @@ fn make_spans_for_execution_graph(job_id: &String, execution_graph: &ExecutionGr
         start: None,
         end: None,
         status: SpanStatus::Unknown,
-        metadata: Default::default(),
+        metadata: HashMap::from([
+            (Cow::from("job_id"), MetaValue::String(Cow::from(job_id.clone())))
+        ]),
         events: vec![],
     };
 
     let stages = execution_graph.stages();
     info!("TraceManager computing spans for {} stages", stages.len());
     let mut all_spans:Vec<Span> = vec![];
-    for (stage_id, stage) in stages.iter() {
+    for (_, stage) in stages.iter() {
         let mut stage_spans = make_spans_for_stage(&mut job_span, stage);
         all_spans.append(&mut stage_spans);
     }
@@ -163,21 +163,21 @@ fn make_spans_for_stage(
         start: None,
         end: None,
         status: SpanStatus::Unknown,
-        metadata: Default::default(),
+        metadata: HashMap::from([
+            (Cow::from("stage_id"), MetaValue::Int(stage_id as i64))
+        ]),
         events: vec![],
     };
 
-    let mut stage_spans = match stage {
+    let mut stage_task_spans = match stage {
         Successful(stage) => {
             let tmp = stage
                 .task_infos
                 .iter()
                 .enumerate()
-                .map(|(idx, info)| {
-                    let task_spans = make_spans_for_stage_task(&mut stage_span, info);
-                    task_spans
+                .flat_map(|(_idx, info)| {
+                    make_spans_for_stage_task(&mut stage_span, info)
                 })
-                .flatten()
                 .collect::<Vec<Span>>();
             tmp
         }
@@ -186,17 +186,15 @@ fn make_spans_for_stage(
                 .task_infos
                 .iter()
                 .enumerate()
-                .map(|(idx, info_opt)| match info_opt {
+                .flat_map(|(_idx, info_opt)| match info_opt {
                     Some(info) => {
-                        let task_spans = make_spans_for_stage_task(&mut stage_span, info);
-                        task_spans
+                        make_spans_for_stage_task(&mut stage_span, info)
                     }
                     None => {
                         info!("  TraceManager info: NONE");
                         vec![]
                     }
                 })
-                .flatten()
                 .collect::<Vec<Span>>();
             tmp
         }
@@ -206,13 +204,13 @@ fn make_spans_for_stage(
         }
     };
 
-    let (stage_start, stage_end) = enclosing_start_end_time(&stage_spans);
+    let (stage_start, stage_end) = enclosing_start_end_time(&stage_task_spans);
 
     stage_span.start = stage_start;
     stage_span.end = stage_end;
-    stage_spans.insert(0, stage_span);
-    info!("TraceManager final stage spans: {}", stage_spans.len());
-    stage_spans
+    stage_task_spans.insert(0, stage_span);
+    info!("TraceManager final stage spans: {}", stage_task_spans.len());
+    stage_task_spans
 }
 
 fn make_spans_for_stage_task(
@@ -229,7 +227,9 @@ fn make_spans_for_stage_task(
         start: None,
         end: None,
         status: SpanStatus::Unknown,
-        metadata: Default::default(),
+        metadata: HashMap::from([
+            (Cow::from("task_id"), MetaValue::Int(task_info.task_id as i64))
+        ]),
         events: vec![],
     };
     let json_trace = &task_info.json_trace;
@@ -240,9 +240,9 @@ fn make_spans_for_stage_task(
     } else {
         vec![]
     };
-    set_parent(stage_span, &mut remote_spans);
-    // remote_spans.insert(0, stage_span);
-    return remote_spans;
+    set_parent(&mut task_span, &mut remote_spans);
+    remote_spans.insert(0, task_span);
+    remote_spans
 }
 
 fn set_parent(parent: &mut Span, spans: &mut Vec<Span>) {
@@ -258,7 +258,7 @@ fn set_parent(parent: &mut Span, spans: &mut Vec<Span>) {
     info!("TraceManager parent_span_ids: {:?}", parent_span_ids);
     let missing_parent_span_ids = parent_span_ids
         .iter()
-        .filter(|&pid| !span_ids.contains(&pid))
+        .filter(|&pid| !span_ids.contains(pid))
         .collect::<Vec<&SpanId>>();
     info!(
         "TraceManager missing_parent_span_ids: {:?}",
