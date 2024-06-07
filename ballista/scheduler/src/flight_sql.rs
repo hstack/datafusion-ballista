@@ -211,25 +211,26 @@ impl FlightSqlServiceImpl {
         if let LogicalPlan::Ddl(statement) = &plan {
             if let DdlStatement::CreateExternalTable(create) = statement {
 
-                let state = ctx.state_weak_ref().upgrade().unwrap();
-                let mut state = state.write();
-                let cfg_opts = state.config_mut().options_mut();
+                if create.location.starts_with("abfss://") {
+                    let state = ctx.state_weak_ref().upgrade().unwrap();
+                    let mut state = state.write();
+                    let cfg_opts = state.config_mut().options_mut();
 
-                // TODO: @ExecutorCredentials -consider a separate cache.
-                //  Only works with BALLISTA_SCHEDULER_ADVERTISE_FLIGHT_SQL_ENDPOINT=memory
-                cfg_opts.extensions.insert(AepAzureCreds::default());
-                cfg_opts.set("aep.location", create.location.as_str()).unwrap();
+                    // TODO: @ExecutorCredentials -consider a separate cache.
+                    //  Only works with BALLISTA_SCHEDULER_ADVERTISE_FLIGHT_SQL_ENDPOINT=memory
+                    cfg_opts.extensions.insert(AepAzureCreds::default());
+                    cfg_opts.set("aep.location", create.location.as_str()).unwrap();
 
-                // TODO these should be inserted as prefixed and passed along to delta-rs
-                //  OR register the object store upfront
-                let keys = vec!["client_secret", "client_id", "tenant_id"];
-                for key in keys {
-                    if let Some(value) = create.options.get(key) {
-                        let dest = format!("aep.{}", key);
-                        cfg_opts.set(dest.as_str(), value.as_str()).unwrap();
+                    // TODO these should be inserted as prefixed and passed along to delta-rs
+                    //  OR register the object store upfront
+                    let keys = vec!["client_secret", "client_id", "tenant_id"];
+                    for key in keys {
+                        if let Some(value) = create.options.get(key) {
+                            let dest = format!("aep.{}", key);
+                            cfg_opts.set(dest.as_str(), value.as_str()).unwrap();
+                        }
                     }
                 }
-
             }
         }
 
